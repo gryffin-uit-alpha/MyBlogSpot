@@ -1,13 +1,20 @@
 import { getArticles } from '@/lib/api/articles';
 import { ArticleList } from '@/components/article/ArticleList';
 
-export default async function Home() {
+interface PageProps {
+  searchParams: { page?: string; per_page?: string };
+}
+
+export default async function ArticlesPage({ searchParams }: PageProps) {
+  const page = parseInt(searchParams.page || '1', 10);
+  const perPage = parseInt(searchParams.per_page || '20', 10);
+
   let articles = [];
   let meta = null;
   let error = null;
 
   try {
-    const response = await getArticles({ per_page: 10 });
+    const response = await getArticles({ page, per_page: perPage });
     if (response.success && response.data) {
       articles = response.data;
       meta = response.meta || null;
@@ -21,12 +28,8 @@ export default async function Home() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">
-          Welcome to MyBlogSpot
-        </h1>
-        <p className="text-lg text-gray-600">
-          Technical writing, DevOps insights, and backend engineering explorations
-        </p>
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">All Articles</h1>
+        <p className="text-gray-600">Browse all published articles</p>
       </div>
 
       {error ? (
@@ -34,7 +37,7 @@ export default async function Home() {
           <p className="text-red-500">{error}</p>
         </div>
       ) : (
-        <ArticleList articles={articles} meta={meta} basePath="/" />
+        <ArticleList articles={articles} meta={meta} basePath="/articles" />
       )}
     </div>
   );
