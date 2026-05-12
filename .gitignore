@@ -46,3 +46,7 @@ coverage/
 # Database
 *.db
 *.sqlite
+.claude/
+.specify/
+specs/
+CLAUDE.md
