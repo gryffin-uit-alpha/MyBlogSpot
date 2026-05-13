@@ -1,30 +1,35 @@
 -- name: CreateArticle :one
 INSERT INTO articles (title, slug, summary, content, category_id, status)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING *;
+RETURNING id, title, slug, summary, content, category_id, status, view_count, published_at, created_at, updated_at;
 
 -- name: GetArticleBySlug :one
-SELECT * FROM articles
+SELECT id, title, slug, summary, content, category_id, status, view_count, published_at, created_at, updated_at
+FROM articles
 WHERE slug = $1 AND status = 'published';
 
 -- name: GetArticleByID :one
-SELECT * FROM articles
+SELECT id, title, slug, summary, content, category_id, status, view_count, published_at, created_at, updated_at
+FROM articles
 WHERE id = $1;
 
 -- name: ListPublishedArticles :many
-SELECT * FROM articles
+SELECT id, title, slug, summary, content, category_id, status, view_count, published_at, created_at, updated_at
+FROM articles
 WHERE status = 'published'
 ORDER BY published_at DESC
 LIMIT $1 OFFSET $2;
 
 -- name: ListArticlesByCategory :many
-SELECT * FROM articles
+SELECT id, title, slug, summary, content, category_id, status, view_count, published_at, created_at, updated_at
+FROM articles
 WHERE status = 'published' AND category_id = $1
 ORDER BY published_at DESC
 LIMIT $2 OFFSET $3;
 
 -- name: ListAllArticles :many
-SELECT * FROM articles
+SELECT id, title, slug, summary, content, category_id, status, view_count, published_at, created_at, updated_at
+FROM articles
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
@@ -32,7 +37,7 @@ LIMIT $1 OFFSET $2;
 UPDATE articles
 SET title = $2, slug = $3, summary = $4, content = $5, category_id = $6, status = $7
 WHERE id = $1
-RETURNING *;
+RETURNING id, title, slug, summary, content, category_id, status, view_count, published_at, created_at, updated_at;
 
 -- name: DeleteArticle :exec
 DELETE FROM articles

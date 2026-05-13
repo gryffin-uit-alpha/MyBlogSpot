@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
-	"myblogspot/internal/db"
-	"myblogspot/internal/model"
+	"github.com/gryffin-uit-alpha/myblogspot/internal/db"
+	"github.com/gryffin-uit-alpha/myblogspot/internal/model"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // ArticleService handles article business logic
@@ -41,14 +43,14 @@ func (s *ArticleService) ListPublished(ctx context.Context, limit, offset int32)
 	dtos := make([]model.ArticleListDTO, len(articles))
 	for i, article := range articles {
 		dtos[i] = model.ArticleListDTO{
-			ID:          article.ID,
+			ID:          uuid.UUID(article.ID.Bytes),
 			Title:       article.Title,
 			Slug:        article.Slug,
-			Summary:     article.Summary,
-			CategoryID:  article.CategoryID,
+			Summary:     pgTextToStringPtr(article.Summary),
+			CategoryID:  pgUUIDToUUIDPtr(article.CategoryID),
 			ViewCount:   article.ViewCount,
-			PublishedAt: article.PublishedAt,
-			CreatedAt:   article.CreatedAt,
+			PublishedAt: pgTimestampToTimePtr(article.PublishedAt),
+			CreatedAt:   pgTimestampToTime(article.CreatedAt),
 		}
 	}
 
@@ -66,17 +68,17 @@ func (s *ArticleService) GetBySlug(ctx context.Context, slug string) (*model.Art
 	}
 
 	dto := &model.ArticleDTO{
-		ID:          article.ID,
+		ID:          uuid.UUID(article.ID.Bytes),
 		Title:       article.Title,
 		Slug:        article.Slug,
-		Summary:     article.Summary,
+		Summary:     pgTextToStringPtr(article.Summary),
 		Content:     article.Content,
-		CategoryID:  article.CategoryID,
+		CategoryID:  pgUUIDToUUIDPtr(article.CategoryID),
 		Status:      article.Status,
 		ViewCount:   article.ViewCount,
-		PublishedAt: article.PublishedAt,
-		CreatedAt:   article.CreatedAt,
-		UpdatedAt:   article.UpdatedAt,
+		PublishedAt: pgTimestampToTimePtr(article.PublishedAt),
+		CreatedAt:   pgTimestampToTime(article.CreatedAt),
+		UpdatedAt:   pgTimestampToTime(article.UpdatedAt),
 	}
 
 	return dto, nil
@@ -84,9 +86,48 @@ func (s *ArticleService) GetBySlug(ctx context.Context, slug string) (*model.Art
 
 // IncrementViewCount increments the view count for an article
 func (s *ArticleService) IncrementViewCount(ctx context.Context, id uuid.UUID) error {
-	err := s.queries.IncrementViewCount(ctx, id)
+	pgID := uuidToPgUUID(id)
+	err := s.queries.IncrementViewCount(ctx, pgID)
 	if err != nil {
 		return fmt.Errorf("failed to increment view count: %w", err)
 	}
 	return nil
+}
+
+// Helper functions to convert between pgtype and standard Go types
+
+func pgTextToStringPtr(t pgtype.Text) *string {
+	if !t.Valid {
+		return nil
+	}
+	return &t.String
+}
+
+func pgUUIDToUUIDPtr(u pgtype.UUID) *uuid.UUID {
+	if !u.Valid {
+		return nil
+	}
+	id := uuid.UUID(u.Bytes)
+	return &id
+}
+
+func pgTimestampToTimePtr(t pgtype.Timestamp) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	return &t.Time
+}
+
+func pgTimestampToTime(t pgtype.Timestamp) time.Time {
+	if !t.Valid {
+		return time.Time{}
+	}
+	return t.Time
+}
+
+func uuidToPgUUID(id uuid.UUID) pgtype.UUID {
+	return pgtype.UUID{
+		Bytes: [16]byte(id),
+		Valid: true,
+	}
 }

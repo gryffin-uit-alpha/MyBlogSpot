@@ -18,7 +18,8 @@ WHERE at.article_id = $1
 ORDER BY t.name;
 
 -- name: GetTagArticles :many
-SELECT a.* FROM articles a
+SELECT a.id, a.title, a.slug, a.summary, a.content, a.category_id, a.status, a.view_count, a.published_at, a.created_at, a.updated_at
+FROM articles a
 INNER JOIN article_tags at ON a.id = at.article_id
 WHERE at.tag_id = $1 AND a.status = 'published'
 ORDER BY a.published_at DESC

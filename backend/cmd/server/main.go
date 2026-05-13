@@ -1,7 +1,7 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,41 +12,51 @@ import (
 	"github.com/gryffin-uit-alpha/myblogspot/internal/handler"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/middleware"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/service"
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
 	cfg := config.Load()
 
 	// Initialize database connection
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		cfg.Database.Host,
-		cfg.Database.Port,
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		cfg.Database.User,
 		cfg.Database.Password,
+		cfg.Database.Host,
+		cfg.Database.Port,
 		cfg.Database.Name,
 		cfg.Database.SSLMode,
 	)
 
-	database, err := sql.Open("postgres", dsn)
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	defer database.Close()
+	defer pool.Close()
 
 	// Test database connection
-	if err := database.Ping(); err != nil {
+	if err := pool.Ping(ctx); err != nil {
 		log.Fatalf("Failed to ping database: %v", err)
 	}
 
 	log.Println("Database connection established")
 
 	// Initialize queries and services
-	queries := db.New(database)
+	queries := db.New(pool)
 	articleService := service.NewArticleService(queries)
+	categoryService := service.NewCategoryService(queries)
+	tagService := service.NewTagService(queries)
+	searchService := service.NewSearchService(queries)
+	commentService := service.NewCommentService(queries)
 
 	// Initialize handlers
 	articleHandler := handler.NewArticleHandler(articleService)
+	categoryHandler := handler.NewCategoryHandler(categoryService)
+	categoryHandler.ArticleService = articleService // For getting articles by category
+	tagHandler := handler.NewTagHandler(tagService)
+	searchHandler := handler.NewSearchHandler(searchService)
+	commentHandler := handler.NewCommentHandler(commentService)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -64,6 +74,24 @@ func main() {
 		r.Get("/articles", articleHandler.ListArticles)
 		r.Get("/articles/{slug}", articleHandler.GetArticle)
 		r.Post("/articles/{id}/view", articleHandler.TrackView)
+
+		// Category routes
+		r.Get("/categories", categoryHandler.ListCategories)
+		r.Get("/categories/{slug}", categoryHandler.GetCategory)
+		r.Get("/categories/{slug}/articles", categoryHandler.GetCategoryArticles)
+
+		// Tag routes
+		r.Get("/tags", tagHandler.ListTags)
+		r.Get("/tags/{slug}", tagHandler.GetTag)
+		r.Get("/tags/{slug}/articles", tagHandler.GetTagArticles)
+
+		// Search route
+		r.Get("/search", searchHandler.Search)
+
+		// Comment routes
+		r.Get("/articles/{slug}/comments", commentHandler.ListComments)
+		r.Post("/articles/{slug}/comments", commentHandler.CreateComment)
+		r.Delete("/comments/{id}", commentHandler.DeleteComment)
 	})
 
 	log.Printf("Server starting on port %s", cfg.Port)

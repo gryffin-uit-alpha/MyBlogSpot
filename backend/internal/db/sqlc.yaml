@@ -13,3 +13,10 @@ sql:
         emit_interface: false
         emit_exact_table_names: false
         emit_empty_slices: true
+        overrides:
+          - db_type: "tsvector"
+            nullable: false
+            go_type: "string"
+          - column: "articles.search_vector"
+            go_type:
+              type: "string"

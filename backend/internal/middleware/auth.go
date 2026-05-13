@@ -15,7 +15,7 @@ const AdminIDKey contextKey = "admin_id"
 
 func Auth(jwtSecret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		return http.FuncHandler(func(w http.ResponseWriter, r *http.Request) {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			tokenString := extractToken(r)
 			if tokenString == "" {
 				respondJSON(w, http.StatusUnauthorized, model.ErrorResponse("UNAUTHORIZED", "Authentication required"))
