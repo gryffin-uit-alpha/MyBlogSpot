@@ -5,7 +5,7 @@ interface ArticleCardProps {
   article: ArticleListItem;
 }
 
-export function ArticleCard({ article }: ArticleCardProps) {
+export default function ArticleCard({ article }: ArticleCardProps) {
   const formattedDate = article.published_at
     ? new Date(article.published_at).toLocaleDateString('en-US', {
         year: 'numeric',

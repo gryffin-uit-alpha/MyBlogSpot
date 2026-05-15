@@ -31,3 +31,6 @@ WHERE article_id = $1;
 -- name: CountRecentCommentsByIP :one
 SELECT COUNT(*) FROM comments
 WHERE ip_address = $1 AND created_at > $2;
+
+-- name: CountAllComments :one
+SELECT COUNT(*) FROM comments;

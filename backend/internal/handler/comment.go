@@ -128,6 +128,75 @@ func (h *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 	util.RespondSuccess(w, http.StatusOK, map[string]string{"message": "Comment deleted successfully"}, nil)
 }
 
+// ListAllComments handles GET /api/v1/admin/comments (admin only)
+func (h *CommentHandler) ListAllComments(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Parse pagination
+	limit, offset := util.ParsePagination(r)
+
+	// Get all comments with article context
+	comments, total, err := h.commentService.ListAll(ctx, limit, offset)
+	if err != nil {
+		util.RespondError(w, http.StatusInternalServerError, "Failed to fetch comments")
+		return
+	}
+
+	// Build pagination metadata
+	page := (offset / limit) + 1
+	totalPages := (total + int64(limit) - 1) / int64(limit)
+
+	meta := &model.MetaInfo{
+		Page:       int(page),
+		PerPage:    int(limit),
+		Total:      int(total),
+		TotalPages: int(totalPages),
+	}
+
+	util.RespondSuccess(w, http.StatusOK, comments, meta)
+}
+
+// ListCommentsByArticleID handles GET /api/v1/admin/articles/:id/comments (admin only)
+func (h *CommentHandler) ListCommentsByArticleID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	idStr := chi.URLParam(r, "id")
+
+	if idStr == "" {
+		util.RespondError(w, http.StatusBadRequest, "Article ID is required")
+		return
+	}
+
+	// Parse UUID
+	articleID, err := uuid.Parse(idStr)
+	if err != nil {
+		util.RespondError(w, http.StatusBadRequest, "Invalid article ID")
+		return
+	}
+
+	// Parse pagination
+	limit, offset := util.ParsePagination(r)
+
+	// Get comments
+	comments, total, err := h.commentService.ListByArticleID(ctx, articleID, limit, offset)
+	if err != nil {
+		util.RespondError(w, http.StatusInternalServerError, "Failed to fetch comments")
+		return
+	}
+
+	// Build pagination metadata
+	page := (offset / limit) + 1
+	totalPages := (total + int64(limit) - 1) / int64(limit)
+
+	meta := &model.MetaInfo{
+		Page:       int(page),
+		PerPage:    int(limit),
+		Total:      int(total),
+		TotalPages: int(totalPages),
+	}
+
+	util.RespondSuccess(w, http.StatusOK, comments, meta)
+}
+
 // extractIPAddress extracts the client IP address from the request
 func extractIPAddress(r *http.Request) string {
 	// Check X-Forwarded-For header first (for proxies/load balancers)

@@ -1,5 +1,7 @@
 import { getArticles } from '@/lib/api/articles';
 import { ArticleList } from '@/components/article/ArticleList';
+import { ArticleListItem } from '@/types/article';
+import { PaginationMeta } from '@/types/api';
 
 interface PageProps {
   searchParams: { page?: string; per_page?: string };
@@ -9,9 +11,9 @@ export default async function ArticlesPage({ searchParams }: PageProps) {
   const page = parseInt(searchParams.page || '1', 10);
   const perPage = parseInt(searchParams.per_page || '20', 10);
 
-  let articles = [];
-  let meta = null;
-  let error = null;
+  let articles: ArticleListItem[] = [];
+  let meta: PaginationMeta | null = null;
+  let error: string | null = null;
 
   try {
     const response = await getArticles({ page, per_page: perPage });

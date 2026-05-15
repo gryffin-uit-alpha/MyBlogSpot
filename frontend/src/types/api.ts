@@ -16,3 +16,10 @@ export interface PaginationMeta {
   has_next: boolean
   has_prev: boolean
 }
+
+export interface PaginationParams {
+  page?: number
+  per_page?: number
+  limit?: number
+  offset?: number
+}

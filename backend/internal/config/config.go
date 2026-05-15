@@ -7,11 +7,12 @@ import (
 )
 
 type Config struct {
-	Port     string
-	Env      string
-	Database DatabaseConfig
-	JWT      JWTConfig
-	CORS     CORSConfig
+	Port      string
+	Env       string
+	BaseURL   string
+	Database  DatabaseConfig
+	JWT       JWTConfig
+	CORS      CORSConfig
 	RateLimit RateLimitConfig
 }
 
@@ -40,8 +41,9 @@ type RateLimitConfig struct {
 
 func Load() *Config {
 	return &Config{
-		Port: getEnv("PORT", "8080"),
-		Env:  getEnv("ENV", "development"),
+		Port:    getEnv("PORT", "8080"),
+		Env:     getEnv("ENV", "development"),
+		BaseURL: getEnv("BASE_URL", "http://localhost:3000"),
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     getEnv("DB_PORT", "5432"),

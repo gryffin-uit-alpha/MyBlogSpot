@@ -20,3 +20,14 @@ type CreateCommentRequest struct {
 	Nickname string `json:"nickname"`
 	Content  string `json:"content"`
 }
+
+// CommentWithArticleDTO represents a comment with article context (for admin)
+type CommentWithArticleDTO struct {
+	ID           uuid.UUID `json:"id"`
+	ArticleID    uuid.UUID `json:"article_id"`
+	ArticleTitle string    `json:"article_title"`
+	ArticleSlug  string    `json:"article_slug"`
+	Nickname     string    `json:"nickname"`
+	Content      string    `json:"content"`
+	CreatedAt    time.Time `json:"created_at"`
+}

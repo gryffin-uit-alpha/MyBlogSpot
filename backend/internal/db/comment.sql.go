@@ -11,6 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countAllComments = `-- name: CountAllComments :one
+SELECT COUNT(*) FROM comments
+`
+
+func (q *Queries) CountAllComments(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countAllComments)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countCommentsByArticle = `-- name: CountCommentsByArticle :one
 SELECT COUNT(*) FROM comments
 WHERE article_id = $1

@@ -1,10 +1,12 @@
 import { getArticles } from '@/lib/api/articles';
 import { ArticleList } from '@/components/article/ArticleList';
+import { ArticleListItem } from '@/types/article';
+import { PaginationMeta } from '@/types/api';
 
 export default async function Home() {
-  let articles = [];
-  let meta = null;
-  let error = null;
+  let articles: ArticleListItem[] = [];
+  let meta: PaginationMeta | null = null;
+  let error: string | null = null;
 
   try {
     const response = await getArticles({ per_page: 10 });

@@ -122,3 +122,67 @@ func (s *CommentService) Delete(ctx context.Context, commentID uuid.UUID) error 
 
 	return nil
 }
+
+// ListAll returns all comments with article context (admin only)
+func (s *CommentService) ListAll(ctx context.Context, limit, offset int32) ([]model.CommentWithArticleDTO, int64, error) {
+	comments, err := s.queries.ListAllComments(ctx, db.ListAllCommentsParams{
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list comments: %w", err)
+	}
+
+	// Get total count
+	total, err := s.queries.CountAllComments(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count comments: %w", err)
+	}
+
+	dtos := make([]model.CommentWithArticleDTO, len(comments))
+	for i, comment := range comments {
+		dtos[i] = model.CommentWithArticleDTO{
+			ID:           uuid.UUID(comment.ID.Bytes),
+			ArticleID:    uuid.UUID(comment.ArticleID.Bytes),
+			ArticleTitle: comment.ArticleTitle,
+			ArticleSlug:  comment.ArticleSlug,
+			Nickname:     comment.Nickname,
+			Content:      comment.Content,
+			CreatedAt:    pgTimestampToTime(comment.CreatedAt),
+		}
+	}
+
+	return dtos, total, nil
+}
+
+// ListByArticleID returns comments for a specific article by ID (admin use)
+func (s *CommentService) ListByArticleID(ctx context.Context, articleID uuid.UUID, limit, offset int32) ([]model.CommentDTO, int64, error) {
+	pgID := uuidToPgUUID(articleID)
+
+	comments, err := s.queries.ListCommentsByArticle(ctx, db.ListCommentsByArticleParams{
+		ArticleID: pgID,
+		Limit:     limit,
+		Offset:    offset,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list comments: %w", err)
+	}
+
+	total, err := s.queries.CountCommentsByArticle(ctx, pgID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count comments: %w", err)
+	}
+
+	dtos := make([]model.CommentDTO, len(comments))
+	for i, comment := range comments {
+		dtos[i] = model.CommentDTO{
+			ID:        uuid.UUID(comment.ID.Bytes),
+			ArticleID: uuid.UUID(comment.ArticleID.Bytes),
+			Nickname:  comment.Nickname,
+			Content:   comment.Content,
+			CreatedAt: pgTimestampToTime(comment.CreatedAt),
+		}
+	}
+
+	return dtos, total, nil
+}

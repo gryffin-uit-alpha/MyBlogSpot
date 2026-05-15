@@ -4,7 +4,10 @@ import { use, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { getArticle, trackView } from '@/lib/api/articles';
+import { listComments, createComment, type Comment } from '@/lib/api/comments';
 import { ArticleContent } from '@/components/article/ArticleContent';
+import CommentForm from '@/components/comment/CommentForm';
+import CommentList from '@/components/comment/CommentList';
 import type { Article } from '@/types/article';
 
 export default function ArticlePage() {
@@ -14,6 +17,9 @@ export default function ArticlePage() {
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentsTotal, setCommentsTotal] = useState(0);
+  const [loadingComments, setLoadingComments] = useState(false);
 
   useEffect(() => {
     const fetchArticle = async () => {
@@ -45,6 +51,41 @@ export default function ArticlePage() {
       fetchArticle();
     }
   }, [slug]);
+
+  useEffect(() => {
+    const fetchComments = async () => {
+      if (!slug) return;
+
+      try {
+        setLoadingComments(true);
+        const response = await listComments(slug);
+        if (response.success && response.data) {
+          setComments(response.data);
+          setCommentsTotal(response.meta?.total || response.data.length);
+        }
+      } catch (err) {
+        console.error('Failed to load comments:', err);
+      } finally {
+        setLoadingComments(false);
+      }
+    };
+
+    if (slug && article) {
+      fetchComments();
+    }
+  }, [slug, article]);
+
+  const handleCommentSubmit = async (nickname: string, content: string) => {
+    try {
+      const response = await createComment(slug, { nickname, content });
+      if (response.success && response.data) {
+        setComments([...comments, response.data]);
+        setCommentsTotal(commentsTotal + 1);
+      }
+    } catch (err) {
+      throw err;
+    }
+  };
 
   if (loading) {
     return (
@@ -153,6 +194,26 @@ export default function ArticlePage() {
 
       <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
         <ArticleContent content={article.content} />
+      </div>
+
+      {/* Comments Section */}
+      <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Comments</h2>
+
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold mb-4">Leave a Comment</h3>
+          <CommentForm onSubmit={handleCommentSubmit} />
+        </div>
+
+        <div>
+          {loadingComments ? (
+            <div className="text-center py-4 text-gray-500">
+              Loading comments...
+            </div>
+          ) : (
+            <CommentList comments={comments} total={commentsTotal} />
+          )}
+        </div>
       </div>
 
       <div className="flex justify-center">

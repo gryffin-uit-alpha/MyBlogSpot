@@ -49,6 +49,7 @@ func main() {
 	tagService := service.NewTagService(queries)
 	searchService := service.NewSearchService(queries)
 	commentService := service.NewCommentService(queries)
+	adminService := service.NewAdminService(queries, cfg.JWT.Secret)
 
 	// Initialize handlers
 	articleHandler := handler.NewArticleHandler(articleService)
@@ -57,6 +58,10 @@ func main() {
 	tagHandler := handler.NewTagHandler(tagService)
 	searchHandler := handler.NewSearchHandler(searchService)
 	commentHandler := handler.NewCommentHandler(commentService)
+	adminHandler := handler.NewAdminHandler(adminService)
+	healthHandler := handler.NewHealthHandler(pool)
+	feedHandler := handler.NewFeedHandler(articleService, cfg.BaseURL)
+	sitemapHandler := handler.NewSitemapHandler(articleService, categoryService, tagService, cfg.BaseURL)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -64,9 +69,14 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.CORS(cfg.CORS.AllowedOrigins))
 	r.Use(middleware.RateLimit(cfg.RateLimit.Requests))
+	r.Use(middleware.CacheControl())
 
 	// Health check
-	r.Get("/health", handler.HealthCheck)
+	r.Get("/health", healthHandler.Check)
+
+	// RSS feed and sitemap
+	r.Get("/feed.xml", feedHandler.RSS)
+	r.Get("/sitemap.xml", sitemapHandler.Sitemap)
 
 	// Public API routes
 	r.Route("/api/v1", func(r chi.Router) {
@@ -88,10 +98,29 @@ func main() {
 		// Search route
 		r.Get("/search", searchHandler.Search)
 
-		// Comment routes
+		// Comment routes (public)
 		r.Get("/articles/{slug}/comments", commentHandler.ListComments)
 		r.Post("/articles/{slug}/comments", commentHandler.CreateComment)
-		r.Delete("/comments/{id}", commentHandler.DeleteComment)
+
+		// Admin routes
+		r.Post("/admin/login", adminHandler.Login)
+
+		// Protected admin routes
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.Auth(cfg.JWT.Secret))
+
+			// Admin article management
+			r.Get("/admin/articles", articleHandler.ListAllArticles)
+			r.Get("/admin/articles/{id}", articleHandler.GetArticleByID)
+			r.Post("/admin/articles", articleHandler.CreateArticle)
+			r.Put("/admin/articles/{id}", articleHandler.UpdateArticle)
+			r.Delete("/admin/articles/{id}", articleHandler.DeleteArticle)
+
+			// Admin comment moderation
+			r.Get("/admin/comments", commentHandler.ListAllComments)
+			r.Get("/admin/articles/{id}/comments", commentHandler.ListCommentsByArticleID)
+			r.Delete("/admin/comments/{id}", commentHandler.DeleteComment)
+		})
 	})
 
 	log.Printf("Server starting on port %s", cfg.Port)

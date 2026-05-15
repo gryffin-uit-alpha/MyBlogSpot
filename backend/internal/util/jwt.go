@@ -13,11 +13,26 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(adminID uuid.UUID, secret string, expiration int) (string, error) {
+func GenerateToken(adminID interface{}, secret string, expiration time.Duration) (string, error) {
+	var adminUUID uuid.UUID
+
+	switch v := adminID.(type) {
+	case uuid.UUID:
+		adminUUID = v
+	case string:
+		parsed, err := uuid.Parse(v)
+		if err != nil {
+			return "", err
+		}
+		adminUUID = parsed
+	default:
+		return "", errors.New("adminID must be uuid.UUID or string")
+	}
+
 	claims := Claims{
-		AdminID: adminID,
+		AdminID: adminUUID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(expiration) * time.Second)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}

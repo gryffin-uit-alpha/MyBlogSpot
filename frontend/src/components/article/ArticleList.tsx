@@ -2,7 +2,7 @@
 
 import { ArticleListItem } from '@/types/article';
 import { PaginationMeta } from '@/types/api';
-import { ArticleCard } from './ArticleCard';
+import ArticleCard from './ArticleCard';
 import Link from 'next/link';
 
 interface ArticleListProps {
