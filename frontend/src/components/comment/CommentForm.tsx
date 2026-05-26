@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useNickname } from '@/components/common/NicknamePrompt'
 
 interface CommentFormProps {
   onSubmit: (nickname: string, content: string) => Promise<void>
@@ -8,7 +9,7 @@ interface CommentFormProps {
 }
 
 export default function CommentForm({ onSubmit, disabled }: CommentFormProps) {
-  const [nickname, setNickname] = useState('')
+  const { nickname } = useNickname()
   const [content, setContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -17,8 +18,8 @@ export default function CommentForm({ onSubmit, disabled }: CommentFormProps) {
     e.preventDefault()
     setError(null)
 
-    if (!nickname.trim()) {
-      setError('Nickname is required')
+    if (!nickname) {
+      setError('Please refresh the page to set your nickname')
       return
     }
 
@@ -29,9 +30,10 @@ export default function CommentForm({ onSubmit, disabled }: CommentFormProps) {
 
     setIsSubmitting(true)
     try {
-      await onSubmit(nickname, content)
-      setNickname('')
+      await onSubmit(nickname, content.trim())
       setContent('')
+      setError('✓ Comment submitted! Pending approval.')
+      setTimeout(() => setError(null), 5000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit comment')
     } finally {
@@ -40,54 +42,34 @@ export default function CommentForm({ onSubmit, disabled }: CommentFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-3">
       <div>
-        <label htmlFor="nickname" className="block text-sm font-medium mb-1">
-          Nickname
-        </label>
-        <input
-          id="nickname"
-          type="text"
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-          disabled={disabled || isSubmitting}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-          placeholder="Your nickname"
-          maxLength={50}
-        />
-      </div>
-
-      <div>
-        <label htmlFor="content" className="block text-sm font-medium mb-1">
-          Comment
-        </label>
         <textarea
           id="content"
           value={content}
           onChange={(e) => setContent(e.target.value)}
           disabled={disabled || isSubmitting}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-          placeholder="Share your thoughts..."
+          className="w-full px-3 py-2.5 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 text-sm placeholder:text-gray-600 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          placeholder={`Share your thoughts as ${nickname || 'loading...'}...`}
           rows={4}
           maxLength={1000}
         />
-        <div className="text-sm text-gray-500 mt-1">
-          {content.length}/1000 characters
+        <div className="flex items-center justify-between mt-1.5">
+          <span className="font-mono text-xs text-gray-600">
+            {content.length}/1000
+          </span>
+          {error && (
+            <span className={`text-xs ${error.startsWith('✓') ? 'text-cyan-400' : 'text-red-400'}`}>{error}</span>
+          )}
         </div>
       </div>
 
-      {error && (
-        <div className="text-red-600 text-sm bg-red-50 p-2 rounded">
-          {error}
-        </div>
-      )}
-
       <button
         type="submit"
-        disabled={disabled || isSubmitting}
-        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400"
+        disabled={disabled || isSubmitting || !content.trim()}
+        className="w-full px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-lg font-mono text-sm hover:bg-cyan-500/20 hover:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
       >
-        {isSubmitting ? 'Submitting...' : 'Post Comment'}
+        {isSubmitting ? '[ Posting... ]' : '[ Post Comment ]'}
       </button>
     </form>
   )

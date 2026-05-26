@@ -23,3 +23,13 @@ export interface PaginationParams {
   limit?: number
   offset?: number
 }
+
+export interface PaginatedResponse<T> {
+  success: boolean
+  data: T[]
+  meta?: PaginationMeta
+  error?: {
+    code: string
+    message: string
+  }
+}

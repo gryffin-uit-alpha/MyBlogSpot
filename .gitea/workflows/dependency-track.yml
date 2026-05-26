@@ -1,0 +1,109 @@
+name: Dependency Track SBOM Upload
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  sbom-backend:
+    name: Backend SBOM (Go)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install CycloneDX gomod
+        run: go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest
+
+      - name: Generate Go SBOM
+        working-directory: ./backend
+        run: cyclonedx-gomod mod -json -output ../backend-sbom.json
+
+      - name: Upload Backend SBOM to Dependency-Track
+        run: |
+          curl -X "POST" "${{ secrets.DEPENDENCY_TRACK_URL }}/api/v1/bom" \
+            -H "Content-Type: multipart/form-data" \
+            -H "X-Api-Key: ${{ secrets.DEPENDENCY_TRACK_API_KEY }}" \
+            -F "autoCreate=true" \
+            -F "projectName=MyBlogSpot-Backend" \
+            -F "projectVersion=${{ github.ref_name }}" \
+            -F "bom=@backend-sbom.json"
+
+  sbom-frontend:
+    name: Frontend SBOM (Node.js)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Install CycloneDX npm
+        run: npm install -g @cyclonedx/cyclonedx-npm
+
+      - name: Generate Frontend SBOM
+        working-directory: ./frontend
+        run: cyclonedx-npm --output-file ../frontend-sbom.json
+
+      - name: Upload Frontend SBOM to Dependency-Track
+        run: |
+          curl -X "POST" "${{ secrets.DEPENDENCY_TRACK_URL }}/api/v1/bom" \
+            -H "Content-Type: multipart/form-data" \
+            -H "X-Api-Key: ${{ secrets.DEPENDENCY_TRACK_API_KEY }}" \
+            -F "autoCreate=true" \
+            -F "projectName=MyBlogSpot-Frontend" \
+            -F "projectVersion=${{ github.ref_name }}" \
+            -F "bom=@frontend-sbom.json"
+
+  check-vulnerabilities:
+    name: Check for Vulnerabilities
+    runs-on: ubuntu-latest
+    needs: [sbom-backend, sbom-frontend]
+    steps:
+      - name: Wait for Dependency-Track processing
+        run: sleep 30
+
+      - name: Check Backend Vulnerabilities
+        id: backend-vulns
+        run: |
+          RESPONSE=$(curl -s "${{ secrets.DEPENDENCY_TRACK_URL }}/api/v1/project/lookup?name=MyBlogSpot-Backend&version=${{ github.ref_name }}" \
+            -H "X-Api-Key: ${{ secrets.DEPENDENCY_TRACK_API_KEY }}")
+          echo "$RESPONSE"
+          CRITICAL=$(echo "$RESPONSE" | grep -o '"critical":[0-9]*' | cut -d: -f2)
+          HIGH=$(echo "$RESPONSE" | grep -o '"high":[0-9]*' | cut -d: -f2)
+          echo "Backend - Critical: $CRITICAL, High: $HIGH"
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "❌ Critical vulnerabilities found in backend!"
+            exit 1
+          fi
+
+      - name: Check Frontend Vulnerabilities
+        id: frontend-vulns
+        run: |
+          RESPONSE=$(curl -s "${{ secrets.DEPENDENCY_TRACK_URL }}/api/v1/project/lookup?name=MyBlogSpot-Frontend&version=${{ github.ref_name }}" \
+            -H "X-Api-Key: ${{ secrets.DEPENDENCY_TRACK_API_KEY }}")
+          echo "$RESPONSE"
+          CRITICAL=$(echo "$RESPONSE" | grep -o '"critical":[0-9]*' | cut -d: -f2)
+          HIGH=$(echo "$RESPONSE" | grep -o '"high":[0-9]*' | cut -d: -f2)
+          echo "Frontend - Critical: $CRITICAL, High: $HIGH"
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "❌ Critical vulnerabilities found in frontend!"
+            exit 1
+          fi

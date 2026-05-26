@@ -41,7 +41,7 @@ export interface CommentWithArticle {
 }
 
 export async function login(data: LoginRequest): Promise<ApiResponse<LoginResponse>> {
-  return apiClient<ApiResponse<LoginResponse>>('/api/v1/admin/login', {
+  return apiClient<ApiResponse<LoginResponse>>('/admin/login', {
     method: 'POST',
     body: JSON.stringify(data),
   })
@@ -53,7 +53,7 @@ export async function listAllArticles(
   token: string
 ): Promise<ApiResponse<Article[]>> {
   return apiClient<ApiResponse<Article[]>>(
-    `/api/v1/admin/articles?page=${page}&per_page=${perPage}`,
+    `/admin/articles?page=${page}&per_page=${perPage}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -66,7 +66,7 @@ export async function getArticleById(
   id: string,
   token: string
 ): Promise<ApiResponse<Article>> {
-  return apiClient<ApiResponse<Article>>(`/api/v1/admin/articles/${id}`, {
+  return apiClient<ApiResponse<Article>>(`/admin/articles/${id}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -77,7 +77,7 @@ export async function createArticle(
   data: CreateArticleRequest,
   token: string
 ): Promise<ApiResponse<Article>> {
-  return apiClient<ApiResponse<Article>>('/api/v1/admin/articles', {
+  return apiClient<ApiResponse<Article>>('/admin/articles', {
     method: 'POST',
     body: JSON.stringify(data),
     headers: {
@@ -91,7 +91,7 @@ export async function updateArticle(
   data: UpdateArticleRequest,
   token: string
 ): Promise<ApiResponse<Article>> {
-  return apiClient<ApiResponse<Article>>(`/api/v1/admin/articles/${id}`, {
+  return apiClient<ApiResponse<Article>>(`/admin/articles/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
     headers: {
@@ -105,7 +105,7 @@ export async function deleteArticle(
   token: string
 ): Promise<ApiResponse<{ message: string }>> {
   return apiClient<ApiResponse<{ message: string }>>(
-    `/api/v1/admin/articles/${id}`,
+    `/admin/articles/${id}`,
     {
       method: 'DELETE',
       headers: {
@@ -121,7 +121,7 @@ export async function listAllComments(
   token: string
 ): Promise<ApiResponse<CommentWithArticle[]>> {
   return apiClient<ApiResponse<CommentWithArticle[]>>(
-    `/api/v1/admin/comments?page=${page}&per_page=${perPage}`,
+    `/admin/comments?page=${page}&per_page=${perPage}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -135,7 +135,64 @@ export async function deleteComment(
   token: string
 ): Promise<ApiResponse<{ message: string }>> {
   return apiClient<ApiResponse<{ message: string }>>(
-    `/api/v1/admin/comments/${id}`,
+    `/admin/comments/${id}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  )
+}
+
+export interface CreateTagRequest {
+  name: string
+  slug: string
+}
+
+export interface UpdateTagRequest extends CreateTagRequest {}
+
+export interface Tag {
+  id: string
+  name: string
+  slug: string
+  created_at: string
+  updated_at: string
+}
+
+export async function createTag(
+  data: CreateTagRequest,
+  token: string
+): Promise<ApiResponse<Tag>> {
+  return apiClient<ApiResponse<Tag>>('/admin/tags', {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}
+
+export async function updateTag(
+  id: string,
+  data: UpdateTagRequest,
+  token: string
+): Promise<ApiResponse<Tag>> {
+  return apiClient<ApiResponse<Tag>>(`/admin/tags/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}
+
+export async function deleteTag(
+  id: string,
+  token: string
+): Promise<ApiResponse<{ message: string }>> {
+  return apiClient<ApiResponse<{ message: string }>>(
+    `/admin/tags/${id}`,
     {
       method: 'DELETE',
       headers: {

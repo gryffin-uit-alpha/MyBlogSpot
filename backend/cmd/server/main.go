@@ -50,6 +50,9 @@ func main() {
 	searchService := service.NewSearchService(queries)
 	commentService := service.NewCommentService(queries)
 	adminService := service.NewAdminService(queries, cfg.JWT.Secret)
+	imageService := service.NewImageService(queries, "./uploads", cfg.BaseURL)
+	homepageService := service.NewHomepageService(queries)
+	sessionService := service.NewSessionService(queries)
 
 	// Initialize handlers
 	articleHandler := handler.NewArticleHandler(articleService)
@@ -59,6 +62,8 @@ func main() {
 	searchHandler := handler.NewSearchHandler(searchService)
 	commentHandler := handler.NewCommentHandler(commentService)
 	adminHandler := handler.NewAdminHandler(adminService)
+	imageHandler := handler.NewImageHandler(imageService)
+	homepageHandler := handler.NewHomepageHandler(homepageService)
 	healthHandler := handler.NewHealthHandler(pool)
 	feedHandler := handler.NewFeedHandler(articleService, cfg.BaseURL)
 	sitemapHandler := handler.NewSitemapHandler(articleService, categoryService, tagService, cfg.BaseURL)
@@ -70,6 +75,7 @@ func main() {
 	r.Use(middleware.CORS(cfg.CORS.AllowedOrigins))
 	r.Use(middleware.RateLimit(cfg.RateLimit.Requests))
 	r.Use(middleware.CacheControl())
+	r.Use(middleware.SessionMiddleware(sessionService))
 
 	// Health check
 	r.Get("/health", healthHandler.Check)
@@ -77,6 +83,10 @@ func main() {
 	// RSS feed and sitemap
 	r.Get("/feed.xml", feedHandler.RSS)
 	r.Get("/sitemap.xml", sitemapHandler.Sitemap)
+
+	// Static file serving for uploads
+	fileServer := http.FileServer(http.Dir("./uploads"))
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", fileServer))
 
 	// Public API routes
 	r.Route("/api/v1", func(r chi.Router) {
@@ -102,6 +112,12 @@ func main() {
 		r.Get("/articles/{slug}/comments", commentHandler.ListComments)
 		r.Post("/articles/{slug}/comments", commentHandler.CreateComment)
 
+		// Related articles (public)
+		r.Get("/articles/{slug}/related", articleHandler.GetRelatedArticles)
+
+		// Homepage routes (public)
+		r.Get("/homepage", homepageHandler.GetSettings)
+
 		// Admin routes
 		r.Post("/admin/login", adminHandler.Login)
 
@@ -119,7 +135,26 @@ func main() {
 			// Admin comment moderation
 			r.Get("/admin/comments", commentHandler.ListAllComments)
 			r.Get("/admin/articles/{id}/comments", commentHandler.ListCommentsByArticleID)
+			r.Put("/admin/comments/{id}/approve", commentHandler.ApproveComment)
 			r.Delete("/admin/comments/{id}", commentHandler.DeleteComment)
+
+			// Admin category management
+			r.Post("/admin/categories", categoryHandler.CreateCategory)
+			r.Put("/admin/categories/{id}", categoryHandler.UpdateCategory)
+			r.Delete("/admin/categories/{id}", categoryHandler.DeleteCategory)
+
+			// Admin tag management
+			r.Post("/admin/tags", tagHandler.CreateTag)
+			r.Put("/admin/tags/{id}", tagHandler.UpdateTag)
+			r.Delete("/admin/tags/{id}", tagHandler.DeleteTag)
+
+			// Admin image management
+			r.Post("/admin/images", imageHandler.UploadImage)
+			r.Get("/admin/images", imageHandler.ListImages)
+			r.Delete("/admin/images/{id}", imageHandler.DeleteImage)
+
+			// Admin homepage management
+			r.Put("/admin/homepage", homepageHandler.UpdateSettings)
 		})
 	})
 

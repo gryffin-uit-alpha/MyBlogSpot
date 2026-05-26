@@ -1,14 +1,18 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import '../styles/globals.css'
-import { Header } from '@/components/layout/Header'
+import '../styles/design-system.css'
+import '../styles/markdown-images.css'
+import { GlobalNav } from '@/components/layout/GlobalNav'
 import { Footer } from '@/components/layout/Footer'
+import { AuthProvider } from '@/contexts/AuthContext'
+import NicknamePrompt from '@/components/common/NicknamePrompt'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'MyBlogSpot - Technical Knowledge Sharing',
-  description: 'A personal blog for technical writing, DevOps, and backend engineering',
+  title: 'Gryffin - Digital Stage',
+  description: 'Personal stories from a DevOps engineer who codes, plays music, and games. My digital journal.',
 }
 
 export default function RootLayout({
@@ -18,12 +22,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} flex flex-col min-h-screen`}>
-        <Header />
-        <main className="flex-1 bg-gray-50">
-          {children}
-        </main>
-        <Footer />
+      <body className={`${inter.className} min-h-screen bg-[#0B0F19]`}>
+        <AuthProvider>
+          <NicknamePrompt />
+          <GlobalNav />
+          <main className="relative">
+            {children}
+          </main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   )

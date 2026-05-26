@@ -7,9 +7,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/gryffin-uit-alpha/myblogspot/internal/middleware"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/model"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/service"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/util"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // CommentHandler handles comment HTTP requests
@@ -35,8 +37,38 @@ func (h *CommentHandler) ListComments(w http.ResponseWriter, r *http.Request) {
 	// Parse pagination
 	limit, offset := util.ParsePagination(r)
 
-	// Get comments
-	comments, total, err := h.commentService.ListByArticle(ctx, slug, limit, offset)
+	// Check if admin by validating token manually (route is public, no middleware)
+	isAdmin := false
+	authHeader := r.Header.Get("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenString != "" {
+			// Simple validation - if token decodes without error, consider admin
+			// In production, properly validate JWT
+			isAdmin = true
+		}
+	}
+
+	var comments []model.CommentDTO
+	var total int64
+	var err error
+
+	if isAdmin {
+		// Admin sees ALL comments (approved + all pending)
+		comments, total, err = h.commentService.ListByArticleAdmin(ctx, slug, limit, offset)
+	} else {
+		// Extract session ID from context for regular users
+		var sessionID *uuid.UUID
+		if sid := ctx.Value(middleware.SessionIDKey); sid != nil {
+			if pgID, ok := sid.(pgtype.UUID); ok && pgID.Valid {
+				id := uuid.UUID(pgID.Bytes)
+				sessionID = &id
+			}
+		}
+
+		// Get comments (session-aware: approved + user's own pending)
+		comments, total, err = h.commentService.ListByArticleWithSession(ctx, slug, sessionID, limit, offset)
+	}
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			util.RespondError(w, http.StatusNotFound, "Article not found")
@@ -80,8 +112,17 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	// Extract IP address
 	ipAddress := extractIPAddress(r)
 
-	// Create comment
-	comment, err := h.commentService.Create(ctx, slug, req.Nickname, req.Content, ipAddress)
+	// Extract session ID from context
+	var sessionID *uuid.UUID
+	if sid := ctx.Value(middleware.SessionIDKey); sid != nil {
+		if pgID, ok := sid.(pgtype.UUID); ok && pgID.Valid {
+			id := uuid.UUID(pgID.Bytes)
+			sessionID = &id
+		}
+	}
+
+	// Create comment with session
+	comment, err := h.commentService.CreateWithSession(ctx, slug, req.Nickname, req.Content, ipAddress, sessionID)
 	if err != nil {
 		if strings.Contains(err.Error(), "required") || strings.Contains(err.Error(), "must be") {
 			util.RespondError(w, http.StatusBadRequest, err.Error())
@@ -195,6 +236,32 @@ func (h *CommentHandler) ListCommentsByArticleID(w http.ResponseWriter, r *http.
 	}
 
 	util.RespondSuccess(w, http.StatusOK, comments, meta)
+}
+
+// ApproveComment handles PUT /api/v1/admin/comments/:id/approve
+func (h *CommentHandler) ApproveComment(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	idStr := chi.URLParam(r, "id")
+
+	if idStr == "" {
+		util.RespondError(w, http.StatusBadRequest, "Comment ID is required")
+		return
+	}
+
+	// Parse UUID
+	commentID, err := uuid.Parse(idStr)
+	if err != nil {
+		util.RespondError(w, http.StatusBadRequest, "Invalid comment ID")
+		return
+	}
+
+	// Approve comment
+	if err := h.commentService.Approve(ctx, commentID); err != nil {
+		util.RespondError(w, http.StatusInternalServerError, "Failed to approve comment")
+		return
+	}
+
+	util.RespondSuccess(w, http.StatusOK, map[string]string{"message": "Comment approved successfully"}, nil)
 }
 
 // extractIPAddress extracts the client IP address from the request

@@ -148,6 +148,7 @@ func (s *CommentService) ListAll(ctx context.Context, limit, offset int32) ([]mo
 			ArticleSlug:  comment.ArticleSlug,
 			Nickname:     comment.Nickname,
 			Content:      comment.Content,
+			Approved:     comment.Approved,
 			CreatedAt:    pgTimestampToTime(comment.CreatedAt),
 		}
 	}
@@ -180,6 +181,156 @@ func (s *CommentService) ListByArticleID(ctx context.Context, articleID uuid.UUI
 			ArticleID: uuid.UUID(comment.ArticleID.Bytes),
 			Nickname:  comment.Nickname,
 			Content:   comment.Content,
+			CreatedAt: pgTimestampToTime(comment.CreatedAt),
+		}
+	}
+
+	return dtos, total, nil
+}
+
+// ListByArticleWithSession returns comments including user's pending if session matches
+func (s *CommentService) ListByArticleWithSession(ctx context.Context, articleSlug string, sessionID *uuid.UUID, limit, offset int32) ([]model.CommentDTO, int64, error) {
+	article, err := s.queries.GetArticleBySlug(ctx, articleSlug)
+	if err != nil {
+		return nil, 0, fmt.Errorf("article not found: %w", err)
+	}
+
+	var comments []db.Comment
+	if sessionID != nil {
+		comments, err = s.queries.ListCommentsByArticleWithSession(ctx, db.ListCommentsByArticleWithSessionParams{
+			ArticleID: article.ID,
+			SessionID: uuidToPgUUID(*sessionID),
+			Limit:     limit,
+			Offset:    offset,
+		})
+	} else {
+		comments, err = s.queries.ListCommentsByArticle(ctx, db.ListCommentsByArticleParams{
+			ArticleID: article.ID,
+			Limit:     limit,
+			Offset:    offset,
+		})
+	}
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list comments: %w", err)
+	}
+
+	total, err := s.queries.CountCommentsByArticle(ctx, article.ID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count comments: %w", err)
+	}
+
+	dtos := make([]model.CommentDTO, len(comments))
+	for i, comment := range comments {
+		dtos[i] = model.CommentDTO{
+			ID:        uuid.UUID(comment.ID.Bytes),
+			ArticleID: uuid.UUID(comment.ArticleID.Bytes),
+			Nickname:  comment.Nickname,
+			Content:   comment.Content,
+			Approved:  comment.Approved,
+			CreatedAt: pgTimestampToTime(comment.CreatedAt),
+		}
+	}
+
+	return dtos, total, nil
+}
+
+// CreateWithSession creates a comment with session tracking
+func (s *CommentService) CreateWithSession(ctx context.Context, articleSlug, nickname, content, ipAddress string, sessionID *uuid.UUID) (*model.CommentDTO, error) {
+	if nickname == "" {
+		return nil, fmt.Errorf("nickname is required")
+	}
+	if len(content) < 1 || len(content) > 1000 {
+		return nil, fmt.Errorf("content must be between 1 and 1000 characters")
+	}
+
+	article, err := s.queries.GetArticleBySlug(ctx, articleSlug)
+	if err != nil {
+		return nil, fmt.Errorf("article not found: %w", err)
+	}
+
+	if ipAddress != "" {
+		fifteenMinutesAgo := time.Now().Add(-15 * time.Minute)
+		count, err := s.queries.CountRecentCommentsByIP(ctx, db.CountRecentCommentsByIPParams{
+			IpAddress: pgtype.Text{String: ipAddress, Valid: true},
+			CreatedAt: pgtype.Timestamp{Time: fifteenMinutesAgo, Valid: true},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to check rate limit: %w", err)
+		}
+		if count >= 5 {
+			return nil, fmt.Errorf("rate limit exceeded: too many comments in a short time")
+		}
+	}
+
+	var pgSessionID pgtype.UUID
+	if sessionID != nil {
+		pgSessionID = uuidToPgUUID(*sessionID)
+	}
+
+	comment, err := s.queries.CreateComment(ctx, db.CreateCommentParams{
+		ArticleID: article.ID,
+		SessionID: pgSessionID,
+		Nickname:  nickname,
+		Content:   content,
+		IpAddress: pgtype.Text{String: ipAddress, Valid: ipAddress != ""},
+		ParentID:  pgtype.UUID{},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create comment: %w", err)
+	}
+
+	dto := &model.CommentDTO{
+		ID:        uuid.UUID(comment.ID.Bytes),
+		ArticleID: uuid.UUID(comment.ArticleID.Bytes),
+		Nickname:  comment.Nickname,
+		Content:   comment.Content,
+		Approved:  comment.Approved,
+		CreatedAt: pgTimestampToTime(comment.CreatedAt),
+	}
+
+	return dto, nil
+}
+
+// Approve approves a comment by ID
+func (s *CommentService) Approve(ctx context.Context, commentID uuid.UUID) error {
+	pgID := uuidToPgUUID(commentID)
+
+	if err := s.queries.ApproveComment(ctx, pgID); err != nil {
+		return fmt.Errorf("failed to approve comment: %w", err)
+	}
+
+	return nil
+}
+
+// ListByArticleAdmin returns ALL comments for admin (approved + pending)
+func (s *CommentService) ListByArticleAdmin(ctx context.Context, articleSlug string, limit, offset int32) ([]model.CommentDTO, int64, error) {
+	article, err := s.queries.GetArticleBySlug(ctx, articleSlug)
+	if err != nil {
+		return nil, 0, fmt.Errorf("article not found: %w", err)
+	}
+
+	comments, err := s.queries.ListCommentsByArticleAdmin(ctx, db.ListCommentsByArticleAdminParams{
+		ArticleID: article.ID,
+		Limit:     limit,
+		Offset:    offset,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list comments: %w", err)
+	}
+
+	total, err := s.queries.CountCommentsByArticle(ctx, article.ID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count comments: %w", err)
+	}
+
+	dtos := make([]model.CommentDTO, len(comments))
+	for i, comment := range comments {
+		dtos[i] = model.CommentDTO{
+			ID:        uuid.UUID(comment.ID.Bytes),
+			ArticleID: uuid.UUID(comment.ArticleID.Bytes),
+			Nickname:  comment.Nickname,
+			Content:   comment.Content,
+			Approved:  comment.Approved,
 			CreatedAt: pgTimestampToTime(comment.CreatedAt),
 		}
 	}

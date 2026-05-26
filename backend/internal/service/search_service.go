@@ -3,11 +3,11 @@ package service
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/db"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/model"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // SearchService handles search business logic
@@ -26,14 +26,11 @@ func (s *SearchService) SearchArticles(ctx context.Context, query string, limit,
 		return []model.ArticleListDTO{}, nil
 	}
 
-	// Convert query to tsquery format
-	// Replace spaces with AND operator for better matching
-	tsQuery := strings.Join(strings.Fields(query), " & ")
-
+	// Simple ILIKE search on title only
 	articles, err := s.queries.SearchArticles(ctx, db.SearchArticlesParams{
-		ToTsquery: tsQuery,
-		Limit:     limit,
-		Offset:    offset,
+		Column1: pgtype.Text{String: query, Valid: true},
+		Limit:   limit,
+		Offset:  offset,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to search articles: %w", err)

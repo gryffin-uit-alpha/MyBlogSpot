@@ -22,18 +22,24 @@ func NewTagService(queries *db.Queries) *TagService {
 
 // List returns all tags
 func (s *TagService) List(ctx context.Context) ([]model.TagDTO, error) {
-	tags, err := s.queries.ListTags(ctx)
+	tags, err := s.queries.ListTagsWithCount(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tags: %w", err)
 	}
 
 	dtos := make([]model.TagDTO, len(tags))
 	for i, tag := range tags {
+		var articleCount *int64
+		if count, ok := tag.ArticleCount.(int64); ok {
+			articleCount = &count
+		}
+
 		dtos[i] = model.TagDTO{
-			ID:        uuid.UUID(tag.ID.Bytes),
-			Name:      tag.Name,
-			Slug:      tag.Slug,
-			CreatedAt: pgTimestampToTime(tag.CreatedAt),
+			ID:           uuid.UUID(tag.ID.Bytes),
+			Name:         tag.Name,
+			Slug:         tag.Slug,
+			ArticleCount: articleCount,
+			CreatedAt:    pgTimestampToTime(tag.CreatedAt),
 		}
 	}
 
@@ -88,4 +94,48 @@ func (s *TagService) GetArticlesByTag(ctx context.Context, tagID uuid.UUID, limi
 	}
 
 	return dtos, int64(len(articles)), nil
+}
+
+func (s *TagService) Create(ctx context.Context, req model.CreateTagRequest) (*model.TagDTO, error) {
+	tag, err := s.queries.CreateTag(ctx, db.CreateTagParams{
+		Name: req.Name,
+		Slug: req.Slug,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create tag: %w", err)
+	}
+
+	return &model.TagDTO{
+		ID:        uuid.UUID(tag.ID.Bytes),
+		Name:      tag.Name,
+		Slug:      tag.Slug,
+		CreatedAt: pgTimestampToTime(tag.CreatedAt),
+	}, nil
+}
+
+func (s *TagService) Update(ctx context.Context, id uuid.UUID, req model.UpdateTagRequest) (*model.TagDTO, error) {
+	pgID := uuidToPgUUID(id)
+	tag, err := s.queries.UpdateTag(ctx, db.UpdateTagParams{
+		ID:   pgID,
+		Name: req.Name,
+		Slug: req.Slug,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update tag: %w", err)
+	}
+
+	return &model.TagDTO{
+		ID:        uuid.UUID(tag.ID.Bytes),
+		Name:      tag.Name,
+		Slug:      tag.Slug,
+		CreatedAt: pgTimestampToTime(tag.CreatedAt),
+	}, nil
+}
+
+func (s *TagService) Delete(ctx context.Context, id uuid.UUID) error {
+	pgID := uuidToPgUUID(id)
+	if err := s.queries.DeleteTag(ctx, pgID); err != nil {
+		return fmt.Errorf("failed to delete tag: %w", err)
+	}
+	return nil
 }

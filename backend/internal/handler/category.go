@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/model"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/service"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/util"
@@ -99,4 +102,59 @@ func (h *CategoryHandler) GetCategoryArticles(w http.ResponseWriter, r *http.Req
 	}
 
 	util.RespondSuccess(w, http.StatusOK, articles, meta)
+}
+
+func (h *CategoryHandler) CreateCategory(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateCategoryRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		util.RespondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	category, err := h.categoryService.Create(r.Context(), req)
+	if err != nil {
+		util.RespondError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to create category: %v", err))
+		return
+	}
+
+	util.RespondSuccess(w, http.StatusCreated, category, nil)
+}
+
+func (h *CategoryHandler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		util.RespondError(w, http.StatusBadRequest, "Invalid category ID")
+		return
+	}
+
+	var req model.UpdateCategoryRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		util.RespondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	category, err := h.categoryService.Update(r.Context(), id, req)
+	if err != nil {
+		util.RespondError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to update category: %v", err))
+		return
+	}
+
+	util.RespondSuccess(w, http.StatusOK, category, nil)
+}
+
+func (h *CategoryHandler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		util.RespondError(w, http.StatusBadRequest, "Invalid category ID")
+		return
+	}
+
+	if err := h.categoryService.Delete(r.Context(), id); err != nil {
+		util.RespondError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to delete category: %v", err))
+		return
+	}
+
+	util.RespondSuccess(w, http.StatusOK, map[string]string{"message": "Category deleted"}, nil)
 }

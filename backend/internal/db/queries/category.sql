@@ -18,6 +18,20 @@ SELECT id, name, slug, description, created_at, updated_at
 FROM categories
 ORDER BY name;
 
+-- name: ListCategoriesWithCount :many
+SELECT
+  c.id,
+  c.name,
+  c.slug,
+  c.description,
+  c.created_at,
+  c.updated_at,
+  COALESCE(COUNT(a.id) FILTER (WHERE a.status = 'published'), 0) AS article_count
+FROM categories c
+LEFT JOIN articles a ON a.category_id = c.id
+GROUP BY c.id, c.name, c.slug, c.description, c.created_at, c.updated_at
+ORDER BY c.name;
+
 -- name: UpdateCategory :one
 UPDATE categories
 SET name = $2, slug = $3, description = $4

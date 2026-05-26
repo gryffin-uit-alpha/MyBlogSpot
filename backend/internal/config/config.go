@@ -43,7 +43,7 @@ func Load() *Config {
 	return &Config{
 		Port:    getEnv("PORT", "8080"),
 		Env:     getEnv("ENV", "development"),
-		BaseURL: getEnv("BASE_URL", "http://localhost:3000"),
+		BaseURL: getEnv("BASE_URL", "http://localhost:8080"),
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     getEnv("DB_PORT", "5432"),

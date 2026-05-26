@@ -1,0 +1,322 @@
+/* ==========================================================================
+   DESIGN SYSTEM: MINIMAL CYBER MUSICIAN ENGINEER
+   Style: Dark mode premium, cinematic, ambient
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* Base Colors */
+  --color-base-black: #0B0F19;
+  --color-base-surface: #111827;
+  --color-base-surface-elevated: #1a2332;
+
+  /* Accent Colors - Triple Identity */
+  --color-accent-tech: #22D3EE;      /* Neon Cyan - DevOps/Tech */
+  --color-accent-piano: #8B5CF6;     /* Soft Purple - Piano Night */
+  --color-accent-guitar: #F59E0B;    /* Amber/Orange - Guitar warmth */
+  --color-accent-gold: #FFD700;      /* Gold - Esports rank */
+
+  /* Semantic Colors */
+  --color-text-primary: #F9FAFB;
+  --color-text-secondary: #9CA3AF;
+  --color-text-tertiary: #6B7280;
+  --color-border: rgba(156, 163, 175, 0.1);
+  --color-border-hover: rgba(156, 163, 175, 0.2);
+
+  /* Mood Vibe Colors */
+  --color-vibe-critical: #EF4444;    /* Red - Heavy thoughts */
+  --color-vibe-ambient: #10B981;     /* Green - Chill life */
+  --color-vibe-overclock: #F59E0B;   /* Orange - High energy */
+
+  /* Typography */
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Shadows & Effects */
+  --shadow-glow-cyan: 0 0 20px rgba(34, 211, 238, 0.3);
+  --shadow-glow-purple: 0 0 20px rgba(139, 92, 246, 0.3);
+  --shadow-glow-amber: 0 0 20px rgba(245, 158, 11, 0.3);
+
+  /* Animations */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==========================================================================
+   GLOBAL RESETS & BASE STYLES
+   ========================================================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-base-black);
+  color: var(--color-text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   TYPOGRAPHY SCALE
+   ========================================================================== */
+
+.heading-hero {
+  font-family: var(--font-heading);
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.heading-1 {
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.heading-2 {
+  font-family: var(--font-heading);
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.heading-3 {
+  font-family: var(--font-heading);
+  font-size: clamp(1.25rem, 2.5vw, 2rem);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.body-large {
+  font-family: var(--font-body);
+  font-size: 1.25rem;
+  line-height: 1.8;
+  color: var(--color-text-secondary);
+}
+
+.body-base {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.body-small {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.mono-metadata {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   COMPONENT PATTERNS
+   ========================================================================== */
+
+/* Terminal Bracket Pattern */
+.terminal-bracket {
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+.terminal-bracket::before {
+  content: '[ ';
+}
+
+.terminal-bracket::after {
+  content: ' ]';
+}
+
+/* Glassmorphism Card */
+.glass-card {
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  transition: all var(--transition-base);
+}
+
+.glass-card:hover {
+  border-color: var(--color-border-hover);
+  background: rgba(17, 24, 39, 0.8);
+}
+
+/* Glow Effects */
+.glow-cyan {
+  box-shadow: var(--shadow-glow-cyan);
+}
+
+.glow-purple {
+  box-shadow: var(--shadow-glow-purple);
+}
+
+.glow-amber {
+  box-shadow: var(--shadow-glow-amber);
+}
+
+/* Loading/Boot Animation */
+@keyframes boot-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.boot-animation {
+  animation: boot-up var(--transition-slow) ease-out;
+}
+
+/* Matrix Grid Background */
+@keyframes matrix-flow {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 50px;
+  }
+}
+
+.matrix-grid {
+  background-image:
+    linear-gradient(rgba(34, 211, 238, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: matrix-flow 20s linear infinite;
+}
+
+/* Waveform Progress */
+.waveform-progress {
+  position: fixed;
+  left: 2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 200px;
+  background: linear-gradient(
+    to bottom,
+    var(--color-accent-tech) 0%,
+    var(--color-accent-purple) 50%,
+    var(--color-accent-guitar) 100%
+  );
+  opacity: 0.3;
+  transition: opacity var(--transition-base);
+}
+
+.waveform-progress:hover {
+  opacity: 0.8;
+}
+
+/* Mood Vibe Badges */
+.vibe-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid;
+  transition: all var(--transition-fast);
+}
+
+.vibe-badge.critical {
+  color: var(--color-vibe-critical);
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.vibe-badge.ambient {
+  color: var(--color-vibe-ambient);
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.vibe-badge.overclock {
+  color: var(--color-vibe-overclock);
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+/* ==========================================================================
+   UTILITY CLASSES
+   ========================================================================== */
+
+.text-gradient-tech {
+  background: linear-gradient(135deg, var(--color-accent-tech), var(--color-accent-piano));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-music {
+  background: linear-gradient(135deg, var(--color-accent-piano), var(--color-accent-guitar));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.container-narrow {
+  max-width: 45rem;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.container-reading {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.container-article {
+  max-width: 85rem;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.container-wide {
+  max-width: 75rem;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* Responsive spacing scale */
+.spacing-section {
+  margin-bottom: clamp(2rem, 5vw, 4rem);
+}
+
+.spacing-card {
+  padding: clamp(1rem, 3vw, 1.5rem);
+}
+
+.spacing-compact {
+  padding: clamp(0.75rem, 2vw, 1rem);
+}

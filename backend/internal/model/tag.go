@@ -14,3 +14,13 @@ type TagDTO struct {
 	ArticleCount *int64    `json:"article_count,omitempty"`
 	CreatedAt    time.Time `json:"created_at"`
 }
+
+type CreateTagRequest struct {
+	Name string `json:"name" validate:"required,min=1,max=50"`
+	Slug string `json:"slug" validate:"required,min=1,max=50"`
+}
+
+type UpdateTagRequest struct {
+	Name string `json:"name" validate:"required,min=1,max=50"`
+	Slug string `json:"slug" validate:"required,min=1,max=50"`
+}

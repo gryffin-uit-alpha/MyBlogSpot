@@ -6,12 +6,16 @@ export interface Comment {
   article_id: string
   nickname: string
   content: string
+  parent_id?: string
+  approved: boolean
+  replies?: Comment[]
   created_at: string
 }
 
 export interface CreateCommentRequest {
   nickname: string
   content: string
+  parent_id?: string
 }
 
 export async function listComments(
@@ -19,8 +23,10 @@ export async function listComments(
   page: number = 1,
   perPage: number = 20
 ): Promise<ApiResponse<Comment[]>> {
+  // Add timestamp to prevent caching
+  const timestamp = Date.now();
   return apiClient<ApiResponse<Comment[]>>(
-    `/api/v1/articles/${slug}/comments?page=${page}&per_page=${perPage}`
+    `/articles/${slug}/comments?page=${page}&per_page=${perPage}&_t=${timestamp}`
   )
 }
 
@@ -28,7 +34,7 @@ export async function createComment(
   slug: string,
   data: CreateCommentRequest
 ): Promise<ApiResponse<Comment>> {
-  return apiClient<ApiResponse<Comment>>(`/api/v1/articles/${slug}/comments`, {
+  return apiClient<ApiResponse<Comment>>(`/articles/${slug}/comments`, {
     method: 'POST',
     body: JSON.stringify(data),
   })

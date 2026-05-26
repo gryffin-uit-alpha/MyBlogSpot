@@ -61,3 +61,16 @@ WHERE id = $1;
 -- name: CountPublishedArticles :one
 SELECT COUNT(*) FROM articles
 WHERE status = 'published';
+
+-- name: GetRelatedArticles :many
+SELECT DISTINCT a.*
+FROM articles a
+LEFT JOIN article_tags at1 ON a.id = at1.article_id
+LEFT JOIN article_tags at2 ON at1.tag_id = at2.tag_id AND at2.article_id = $1
+WHERE a.id != $1
+  AND a.status = 'published'
+  AND (at2.article_id IS NOT NULL OR a.category_id = (SELECT category_id FROM articles WHERE id = $1))
+ORDER BY
+  CASE WHEN at2.article_id IS NOT NULL THEN 1 ELSE 2 END,
+  a.created_at DESC
+LIMIT $2;

@@ -1,6 +1,8 @@
 'use client';
 
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { Components } from 'react-markdown';
@@ -34,7 +36,13 @@ export function ArticleContent({ content }: ArticleContentProps) {
 
   return (
     <div className="prose prose-lg max-w-none">
-      <ReactMarkdown components={components}>{content}</ReactMarkdown>
+      <ReactMarkdown
+        components={components}
+        rehypePlugins={[rehypeRaw]}
+        remarkPlugins={[remarkGfm]}
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   );
 }

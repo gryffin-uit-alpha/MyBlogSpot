@@ -1,0 +1,81 @@
+/* Markdown Image Utilities */
+
+/* Size variants */
+.img-small {
+  max-width: 300px;
+  height: auto;
+}
+
+.img-medium {
+  max-width: 600px;
+  height: auto;
+}
+
+.img-large {
+  max-width: 900px;
+  height: auto;
+}
+
+.img-full {
+  width: 100%;
+  height: auto;
+}
+
+/* Alignment */
+.img-center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.img-left {
+  float: left;
+  margin-right: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.img-right {
+  float: right;
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Responsive by default */
+.img-responsive {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Caption support */
+.img-with-caption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.img-caption {
+  font-size: 0.875rem;
+  color: #9CA3AF;
+  font-style: italic;
+  text-align: center;
+}
+
+/* Rounded corners */
+.img-rounded {
+  border-radius: 0.5rem;
+}
+
+.img-rounded-lg {
+  border-radius: 1rem;
+}
+
+/* Shadow */
+.img-shadow {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+/* Border */
+.img-border {
+  border: 2px solid rgba(34, 211, 238, 0.2);
+}

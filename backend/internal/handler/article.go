@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -112,6 +113,29 @@ func (h *ArticleHandler) TrackView(w http.ResponseWriter, r *http.Request) {
 	writeSuccess(w, map[string]string{"message": "View tracked successfully"}, nil)
 }
 
+// GetRelatedArticles handles GET /api/v1/articles/:slug/related
+func (h *ArticleHandler) GetRelatedArticles(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	slug := chi.URLParam(r, "slug")
+
+	if slug == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_SLUG", "Article slug is required")
+		return
+	}
+
+	articles, err := h.service.GetRelatedArticles(ctx, slug, 4)
+	if err != nil {
+		if err.Error() == "article not found" {
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "Article not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "FETCH_FAILED", "Failed to fetch related articles")
+		return
+	}
+
+	writeSuccess(w, articles, nil)
+}
+
 // CreateArticle handles POST /api/v1/admin/articles
 func (h *ArticleHandler) CreateArticle(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateArticleRequest
@@ -127,7 +151,7 @@ func (h *ArticleHandler) CreateArticle(w http.ResponseWriter, r *http.Request) {
 
 	article, err := h.service.Create(r.Context(), req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "CREATE_FAILED", "Failed to create article")
+		writeError(w, http.StatusInternalServerError, "CREATE_FAILED", fmt.Sprintf("Failed to create article: %v", err))
 		return
 	}
 

@@ -22,58 +22,82 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
     const totalPages = Math.ceil(total / limit);
 
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-6xl mx-auto px-4 py-12">
-          <div className="mb-8">
-            <nav className="text-sm text-gray-500 mb-4">
-              <Link href="/categories" className="hover:text-blue-600">
-                Categories
+      <div className="min-h-screen bg-[#0B0F19] text-gray-100">
+        <div className="container-wide mx-auto px-6 py-12">
+          {/* Breadcrumb */}
+          <div className="mb-6">
+            <nav className="font-mono text-xs text-gray-600">
+              <Link href="/categories" className="hover:text-purple-400 transition-colors">
+                <span className="text-gray-700">&gt;</span> cd ../synthesizer
               </Link>
-              <span className="mx-2">/</span>
-              <span className="text-gray-900">{category.name}</span>
+              <span className="mx-2 text-gray-800">/</span>
+              <span className="text-purple-400">{category.slug}</span>
             </nav>
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              {category.name}
-            </h1>
-            {category.description && (
-              <p className="text-lg text-gray-600">{category.description}</p>
-            )}
-            <p className="text-sm text-gray-500 mt-2">
-              {total} {total === 1 ? 'article' : 'articles'}
-            </p>
           </div>
 
+          {/* Header */}
+          <div className="mb-10">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center text-2xl font-bold text-white">
+                {category.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="px-3 py-1 bg-purple-500/10 border border-purple-500/30 rounded font-mono text-xs text-purple-400">
+                {total} {total === 1 ? 'article' : 'articles'}
+              </div>
+            </div>
+
+            <h1 className="heading-1 mb-3">
+              <span className="text-gradient-music">{category.name}</span>
+            </h1>
+
+            {category.description && (
+              <p className="body-large text-gray-400 max-w-3xl">{category.description}</p>
+            )}
+          </div>
+
+          {/* Articles Grid */}
           {articles.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <p>No articles in this category yet.</p>
+            <div className="text-center py-20">
+              <div className="glass-card p-12 max-w-md mx-auto">
+                <div className="w-16 h-16 mx-auto mb-4 bg-purple-500/10 border-2 border-purple-500/30 rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h3 className="heading-3 text-gray-300 mb-2">No Articles Yet</h3>
+                <p className="body-small text-gray-500">
+                  Articles in this category will appear here.
+                </p>
+              </div>
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
                 {articles.map((article) => (
                   <ArticleCard key={article.id} article={article} />
                 ))}
               </div>
 
+              {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex justify-center gap-2">
+                <div className="flex justify-center items-center gap-3 font-mono text-sm">
                   {page > 1 && (
                     <Link
                       href={`/categories/${params.slug}?page=${page - 1}`}
-                      className="px-4 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50"
+                      className="px-4 py-2 bg-gray-800/50 border border-gray-700 hover:border-purple-500/50 text-gray-400 hover:text-purple-400 rounded-lg transition-all"
                     >
-                      Previous
+                      <span>←</span> Previous
                     </Link>
                   )}
-                  <span className="px-4 py-2">
-                    Page {page} of {totalPages}
+                  <span className="px-4 py-2 text-gray-500">
+                    Page {page} <span className="text-gray-700">/</span> {totalPages}
                   </span>
                   {page < totalPages && (
                     <Link
                       href={`/categories/${params.slug}?page=${page + 1}`}
-                      className="px-4 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50"
+                      className="px-4 py-2 bg-gray-800/50 border border-gray-700 hover:border-purple-500/50 text-gray-400 hover:text-purple-400 rounded-lg transition-all"
                     >
-                      Next
+                      Next <span>→</span>
                     </Link>
                   )}
                 </div>

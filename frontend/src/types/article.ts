@@ -22,6 +22,7 @@ export interface ArticleListItem {
   category_id?: string;
   category?: Category;
   tags?: Tag[];
+  status: 'draft' | 'published';
   view_count: number;
   published_at?: string;
   created_at: string;

@@ -55,14 +55,53 @@ CREATE TABLE article_tags (
     PRIMARY KEY (article_id, tag_id)
 );
 
+-- Sessions table for nickname tracking
+CREATE TABLE sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_token VARCHAR(64) UNIQUE NOT NULL,
+    nickname VARCHAR(50),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_sessions_token ON sessions(session_token);
+
 -- Comments table
 CREATE TABLE comments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     article_id UUID NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+    session_id UUID REFERENCES sessions(id) ON DELETE SET NULL,
     nickname VARCHAR(50) NOT NULL,
     content TEXT NOT NULL CHECK (LENGTH(content) >= 1 AND LENGTH(content) <= 1000),
     ip_address VARCHAR(45),
+    parent_id UUID REFERENCES comments(id) ON DELETE CASCADE,
+    approved BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Images table
+CREATE TABLE images (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    filename VARCHAR(255) NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    url VARCHAR(500) NOT NULL,
+    folder VARCHAR(100) NOT NULL DEFAULT 'general',
+    alt_text VARCHAR(255),
+    size_bytes BIGINT NOT NULL,
+    mime_type VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Homepage settings table
+CREATE TABLE homepage_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    hero_title VARCHAR(255) NOT NULL DEFAULT 'Welcome',
+    hero_subtitle TEXT NOT NULL DEFAULT 'Your digital space',
+    hero_cta_text VARCHAR(100) NOT NULL DEFAULT 'Explore',
+    hero_cta_link VARCHAR(255) NOT NULL DEFAULT '/articles',
+    about_title VARCHAR(255) NOT NULL DEFAULT 'About',
+    about_content TEXT NOT NULL DEFAULT 'Tell your story here',
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 -- Indexes
@@ -76,6 +115,10 @@ CREATE INDEX idx_article_tags_tag ON article_tags(tag_id);
 CREATE INDEX idx_comments_article ON comments(article_id);
 CREATE INDEX idx_comments_created_at ON comments(created_at DESC);
 CREATE INDEX idx_comments_rate_limit ON comments(ip_address, created_at);
+CREATE INDEX idx_comments_parent ON comments(parent_id) WHERE parent_id IS NOT NULL;
+
+CREATE INDEX idx_images_folder ON images(folder);
+CREATE INDEX idx_images_created_at ON images(created_at DESC);
 
 -- Triggers
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -96,6 +139,10 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER admins_updated_at
 BEFORE UPDATE ON admins
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER homepage_settings_updated_at
+BEFORE UPDATE ON homepage_settings
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Full-text search trigger
