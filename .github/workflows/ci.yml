@@ -131,7 +131,7 @@ jobs:
   # 3. FRONTEND QUALITY GATE: Next.js Type Check, Lint & Build
   # ============================================================================
   test-frontend:
-    name: Test Frontend (Next.js 14)
+    name: Test Frontend (Next.js 15)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code

@@ -1,4 +1,4 @@
-# Production-Grade Multi-stage Dockerfile for MyBlogSpot Frontend (Next.js 14 Standalone)
+# Production-Grade Multi-stage Dockerfile for MyBlogSpot Frontend (Next.js 15 Standalone)
 # Ref: Knowledge_Base/Docker.md & Security.md
 
 # ==========================================

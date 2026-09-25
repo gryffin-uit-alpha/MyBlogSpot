@@ -7,19 +7,21 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 interface TagPageProps {
-  params: { slug: string };
-  searchParams: { page?: string };
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ page?: string }>;
 }
 
 export default async function TagPage({ params, searchParams }: TagPageProps) {
-  const page = parseInt(searchParams.page || '1', 10);
+  const { slug } = await params;
+  const { page: pageQuery } = await searchParams;
+  const page = parseInt(pageQuery || '1', 10);
   const limit = 20;
   const offset = (page - 1) * limit;
 
   try {
     const [tag, { articles, total }] = await Promise.all([
-      getTag(params.slug),
-      getTagArticles(params.slug, limit, offset),
+      getTag(slug),
+      getTagArticles(slug, limit, offset),
     ]);
 
     const totalPages = Math.ceil(total / limit);
@@ -103,7 +105,7 @@ export default async function TagPage({ params, searchParams }: TagPageProps) {
                 <div className="flex justify-center items-center gap-3 font-mono text-sm">
                   {page > 1 && (
                     <Link
-                      href={`/tags/${params.slug}?page=${page - 1}`}
+                      href={`/tags/${slug}?page=${page - 1}`}
                       className="px-4 py-2 bg-gray-800/50 border border-gray-700 hover:border-amber-500/50 text-gray-400 hover:text-amber-400 rounded-lg transition-all"
                     >
                       <span>←</span> Previous
@@ -114,7 +116,7 @@ export default async function TagPage({ params, searchParams }: TagPageProps) {
                   </span>
                   {page < totalPages && (
                     <Link
-                      href={`/tags/${params.slug}?page=${page + 1}`}
+                      href={`/tags/${slug}?page=${page + 1}`}
                       className="px-4 py-2 bg-gray-800/50 border border-gray-700 hover:border-amber-500/50 text-gray-400 hover:text-amber-400 rounded-lg transition-all"
                     >
                       Next <span>→</span>
@@ -132,9 +134,10 @@ export default async function TagPage({ params, searchParams }: TagPageProps) {
   }
 }
 
-export async function generateMetadata({ params }: TagPageProps) {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   try {
-    const tag = await getTag(params.slug);
+    const { slug } = await params;
+    const tag = await getTag(slug);
     return {
       title: `#${tag.name} - MyBlogSpot`,
       description: `Articles tagged with ${tag.name}`,

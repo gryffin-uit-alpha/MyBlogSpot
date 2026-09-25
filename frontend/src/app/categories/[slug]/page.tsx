@@ -7,19 +7,21 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 interface CategoryPageProps {
-  params: { slug: string };
-  searchParams: { page?: string };
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ page?: string }>;
 }
 
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
-  const page = parseInt(searchParams.page || '1', 10);
+  const { slug } = await params;
+  const { page: pageQuery } = await searchParams;
+  const page = parseInt(pageQuery || '1', 10);
   const limit = 20;
   const offset = (page - 1) * limit;
 
   try {
     const [category, { articles, total }] = await Promise.all([
-      getCategory(params.slug),
-      getCategoryArticles(params.slug, limit, offset),
+      getCategory(slug),
+      getCategoryArticles(slug, limit, offset),
     ]);
 
     const totalPages = Math.ceil(total / limit);
@@ -86,7 +88,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                 <div className="flex justify-center items-center gap-3 font-mono text-sm">
                   {page > 1 && (
                     <Link
-                      href={`/categories/${params.slug}?page=${page - 1}`}
+                      href={`/categories/${slug}?page=${page - 1}`}
                       className="px-4 py-2 bg-gray-800/50 border border-gray-700 hover:border-purple-500/50 text-gray-400 hover:text-purple-400 rounded-lg transition-all"
                     >
                       <span>←</span> Previous
@@ -97,7 +99,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                   </span>
                   {page < totalPages && (
                     <Link
-                      href={`/categories/${params.slug}?page=${page + 1}`}
+                      href={`/categories/${slug}?page=${page + 1}`}
                       className="px-4 py-2 bg-gray-800/50 border border-gray-700 hover:border-purple-500/50 text-gray-400 hover:text-purple-400 rounded-lg transition-all"
                     >
                       Next <span>→</span>
@@ -115,9 +117,10 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   }
 }
 
-export async function generateMetadata({ params }: CategoryPageProps) {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   try {
-    const category = await getCategory(params.slug);
+    const { slug } = await params;
+    const category = await getCategory(slug);
     return {
       title: `${category.name} - MyBlogSpot`,
       description: category.description || `Articles in ${category.name} category`,

@@ -3,7 +3,7 @@ import SearchResults from '@/components/search/SearchResults';
 import { searchArticles } from '@/lib/api/search';
 
 interface SearchPageProps {
-  searchParams: { q?: string };
+  searchParams: Promise<{ q?: string }>;
 }
 
 async function SearchContent({ query }: { query: string }) {
@@ -38,8 +38,9 @@ function SearchFallback() {
   );
 }
 
-export default function SearchPage({ searchParams }: SearchPageProps) {
-  const query = searchParams.q || '';
+export default async function SearchPage({ searchParams }: SearchPageProps) {
+  const { q } = await searchParams;
+  const query = q || '';
 
   return (
     <div className="min-h-screen bg-[#0B0F19] text-gray-100">

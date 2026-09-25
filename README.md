@@ -1,6 +1,6 @@
 # MyBlogSpot - Personal Publishing Platform
 
-A modern fullstack personal blogging platform built with **Next.js 14** (frontend) and **Go** (backend), designed for technical writing, DevOps knowledge sharing, and personal storytelling.
+A modern fullstack personal blogging platform built with **Next.js 15** (frontend) and **Go** (backend), designed for technical writing, DevOps knowledge sharing, and personal storytelling.
 
 ## Features
 
@@ -25,7 +25,7 @@ A modern fullstack personal blogging platform built with **Next.js 14** (fronten
 ## Tech Stack
 
 ### Frontend
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript 5
 - **Styling**: Tailwind CSS + Typography plugin
 - **Content**: Markdown/MDX

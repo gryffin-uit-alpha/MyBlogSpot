@@ -4,6 +4,7 @@ import { useState, FormEvent, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
 
 function LoginContent() {
   const [username, setUsername] = useState('');
@@ -59,12 +60,12 @@ function LoginContent() {
           <p className="text-gray-500 font-mono text-sm max-w-sm mx-auto mb-8">
             The requested resource could not be found on this server.
           </p>
-          <a
+          <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-lg font-mono text-sm hover:bg-cyan-500/20 hover:border-cyan-500/50 transition-all"
           >
             <span>[ Return_Home ]</span>
-          </a>
+          </Link>
         </motion.div>
       </div>
     );
