@@ -62,52 +62,11 @@ jobs:
           sarif_file: 'trivy-fs-results.sarif'
 
   # ============================================================================
-  # 2. BACKEND UNIT TESTS: Go Linting, Formatting & Unit Tests with Race Detector
+  # 2. BACKEND QUALITY GATE: Go Lint, Unit & Integration Tests (PostgreSQL)
   # ============================================================================
   test-backend:
-    name: Test Backend Unit (Go 1.26)
+    name: Test Backend (Go 1.26 + PostgreSQL)
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: 'backend/go.mod'
-          cache: true
-          cache-dependency-path: 'backend/go.sum'
-
-      - name: Verify Module Dependencies
-        run: |
-          cd backend
-          go mod verify
-
-      - name: Run Go Vet
-        run: |
-          cd backend
-          go vet ./...
-
-      - name: Run Backend Unit Tests with Race Detector & Coverage
-        run: |
-          cd backend
-          go test -v -race -coverprofile=coverage.txt -covermode=atomic ./tests/unit/...
-
-      - name: Upload Test Coverage Artifact
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: backend-test-coverage
-          path: backend/coverage.txt
-          retention-days: 7
-
-  # ============================================================================
-  # 3. BACKEND INTEGRATION GATE: Integration Tests with Ephemeral PostgreSQL
-  # ============================================================================
-  test-integration:
-    name: Test Backend Integration (PostgreSQL)
-    runs-on: ubuntu-latest
-    needs: [test-backend]
     services:
       postgres:
         image: postgres:15-alpine
@@ -133,18 +92,43 @@ jobs:
           cache: true
           cache-dependency-path: 'backend/go.sum'
 
+      - name: Verify Module Dependencies
+        run: |
+          cd backend
+          go mod verify
+
+      - name: Run Go Vet
+        run: |
+          cd backend
+          go vet ./...
+
       - name: Apply Database Schema Migration
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-client
           PGPASSWORD=secret psql -h localhost -p 5432 -U myblogspot -d myblogspot_test -f backend/internal/db/schema.sql
 
-      - name: Run Backend Integration Tests
+      - name: Run Backend Unit Tests with Race Detector & Coverage
         run: |
           cd backend
-          go test -v -race ./tests/integration/...
+          go test -v -race -coverprofile=unit-coverage.txt -covermode=atomic ./tests/unit/...
+
+      - name: Run Backend Integration Tests with Race Detector
+        run: |
+          cd backend
+          go test -v -race -coverprofile=integration-coverage.txt -covermode=atomic ./tests/integration/...
+
+      - name: Upload Test Coverage Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-coverage
+          path: |
+            backend/unit-coverage.txt
+            backend/integration-coverage.txt
+          retention-days: 7
 
   # ============================================================================
-  # 4. FRONTEND QUALITY GATE: Next.js Type Check, Lint & Build
+  # 3. FRONTEND QUALITY GATE: Next.js Type Check, Lint & Build
   # ============================================================================
   test-frontend:
     name: Test Frontend (Next.js 14)
@@ -185,14 +169,14 @@ jobs:
           npm run build
 
   # ============================================================================
-  # 5. CONTAINER VERIFICATION: Multi-Stage Build & Trivy Image Security Scan
+  # 4. CONTAINER VERIFICATION: Multi-Stage Build & Trivy Image Security Scan
   #    (Note: Container registry push & Cosign signing will be activated once
   #     registry repositories and credentials are provisioned in Step 2)
   # ============================================================================
   build-and-test-containers:
     name: Build & Verify Docker Images (Local Validation)
     runs-on: ubuntu-latest
-    needs: [security-sast, test-backend, test-integration, test-frontend]
+    needs: [security-sast, test-backend, test-frontend]
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout Code
