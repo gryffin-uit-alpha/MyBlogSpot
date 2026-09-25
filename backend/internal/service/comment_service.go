@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/db"
@@ -77,11 +76,7 @@ func (s *CommentService) Create(ctx context.Context, articleSlug, nickname, cont
 
 	// Check rate limit: max 5 comments per 15 minutes from same IP
 	if ipAddress != "" {
-		fifteenMinutesAgo := time.Now().Add(-15 * time.Minute)
-		count, err := s.queries.CountRecentCommentsByIP(ctx, db.CountRecentCommentsByIPParams{
-			IpAddress: pgtype.Text{String: ipAddress, Valid: true},
-			CreatedAt: pgtype.Timestamp{Time: fifteenMinutesAgo, Valid: true},
-		})
+		count, err := s.queries.CountRecentCommentsByIP(ctx, pgtype.Text{String: ipAddress, Valid: true})
 		if err != nil {
 			return nil, fmt.Errorf("failed to check rate limit: %w", err)
 		}
@@ -160,7 +155,7 @@ func (s *CommentService) ListAll(ctx context.Context, limit, offset int32) ([]mo
 func (s *CommentService) ListByArticleID(ctx context.Context, articleID uuid.UUID, limit, offset int32) ([]model.CommentDTO, int64, error) {
 	pgID := uuidToPgUUID(articleID)
 
-	comments, err := s.queries.ListCommentsByArticle(ctx, db.ListCommentsByArticleParams{
+	comments, err := s.queries.ListCommentsByArticleAdmin(ctx, db.ListCommentsByArticleAdminParams{
 		ArticleID: pgID,
 		Limit:     limit,
 		Offset:    offset,
@@ -169,7 +164,7 @@ func (s *CommentService) ListByArticleID(ctx context.Context, articleID uuid.UUI
 		return nil, 0, fmt.Errorf("failed to list comments: %w", err)
 	}
 
-	total, err := s.queries.CountCommentsByArticle(ctx, pgID)
+	total, err := s.queries.CountCommentsByArticleAdmin(ctx, pgID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count comments: %w", err)
 	}
@@ -221,7 +216,7 @@ func (s *CommentService) ListByArticleWithSession(ctx context.Context, articleSl
 
 	dtos := make([]model.CommentDTO, len(comments))
 	for i, comment := range comments {
-		dtos[i] = model.CommentDTO{
+		dto := model.CommentDTO{
 			ID:        uuid.UUID(comment.ID.Bytes),
 			ArticleID: uuid.UUID(comment.ArticleID.Bytes),
 			Nickname:  comment.Nickname,
@@ -229,13 +224,42 @@ func (s *CommentService) ListByArticleWithSession(ctx context.Context, articleSl
 			Approved:  comment.Approved,
 			CreatedAt: pgTimestampToTime(comment.CreatedAt),
 		}
+
+		// Fetch nested replies for this comment
+		var replies []db.Comment
+		if sessionID != nil {
+			replies, _ = s.queries.ListRepliesByCommentWithSession(ctx, db.ListRepliesByCommentWithSessionParams{
+				ParentID:  comment.ID,
+				SessionID: uuidToPgUUID(*sessionID),
+			})
+		} else {
+			replies, _ = s.queries.ListRepliesByComment(ctx, comment.ID)
+		}
+
+		if len(replies) > 0 {
+			dto.Replies = make([]model.CommentDTO, len(replies))
+			for j, r := range replies {
+				parentUUID := uuid.UUID(comment.ID.Bytes)
+				dto.Replies[j] = model.CommentDTO{
+					ID:        uuid.UUID(r.ID.Bytes),
+					ArticleID: uuid.UUID(r.ArticleID.Bytes),
+					Nickname:  r.Nickname,
+					Content:   r.Content,
+					ParentID:  &parentUUID,
+					Approved:  r.Approved,
+					CreatedAt: pgTimestampToTime(r.CreatedAt),
+				}
+			}
+		}
+
+		dtos[i] = dto
 	}
 
 	return dtos, total, nil
 }
 
-// CreateWithSession creates a comment with session tracking
-func (s *CommentService) CreateWithSession(ctx context.Context, articleSlug, nickname, content, ipAddress string, sessionID *uuid.UUID) (*model.CommentDTO, error) {
+// CreateWithSession creates a comment with session tracking and parent_id support
+func (s *CommentService) CreateWithSession(ctx context.Context, articleSlug, nickname, content, ipAddress string, sessionID *uuid.UUID, parentID *uuid.UUID) (*model.CommentDTO, error) {
 	if nickname == "" {
 		return nil, fmt.Errorf("nickname is required")
 	}
@@ -249,11 +273,7 @@ func (s *CommentService) CreateWithSession(ctx context.Context, articleSlug, nic
 	}
 
 	if ipAddress != "" {
-		fifteenMinutesAgo := time.Now().Add(-15 * time.Minute)
-		count, err := s.queries.CountRecentCommentsByIP(ctx, db.CountRecentCommentsByIPParams{
-			IpAddress: pgtype.Text{String: ipAddress, Valid: true},
-			CreatedAt: pgtype.Timestamp{Time: fifteenMinutesAgo, Valid: true},
-		})
+		count, err := s.queries.CountRecentCommentsByIP(ctx, pgtype.Text{String: ipAddress, Valid: true})
 		if err != nil {
 			return nil, fmt.Errorf("failed to check rate limit: %w", err)
 		}
@@ -267,13 +287,18 @@ func (s *CommentService) CreateWithSession(ctx context.Context, articleSlug, nic
 		pgSessionID = uuidToPgUUID(*sessionID)
 	}
 
+	var pgParentID pgtype.UUID
+	if parentID != nil {
+		pgParentID = uuidToPgUUID(*parentID)
+	}
+
 	comment, err := s.queries.CreateComment(ctx, db.CreateCommentParams{
 		ArticleID: article.ID,
 		SessionID: pgSessionID,
 		Nickname:  nickname,
 		Content:   content,
 		IpAddress: pgtype.Text{String: ipAddress, Valid: ipAddress != ""},
-		ParentID:  pgtype.UUID{},
+		ParentID:  pgParentID,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create comment: %w", err)
@@ -284,6 +309,7 @@ func (s *CommentService) CreateWithSession(ctx context.Context, articleSlug, nic
 		ArticleID: uuid.UUID(comment.ArticleID.Bytes),
 		Nickname:  comment.Nickname,
 		Content:   comment.Content,
+		ParentID:  parentID,
 		Approved:  comment.Approved,
 		CreatedAt: pgTimestampToTime(comment.CreatedAt),
 	}

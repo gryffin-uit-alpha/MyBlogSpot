@@ -11,22 +11,50 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countSearchArticles = `-- name: CountSearchArticles :one
+SELECT COUNT(*)
+FROM articles
+WHERE status = 'published'
+  AND (
+    search_vector @@ websearch_to_tsquery('english', $1)
+    OR title ILIKE '%' || $1 || '%'
+    OR summary ILIKE '%' || $1 || '%'
+    OR content ILIKE '%' || $1 || '%'
+  )
+`
+
+func (q *Queries) CountSearchArticles(ctx context.Context, websearchToTsquery string) (int64, error) {
+	row := q.db.QueryRow(ctx, countSearchArticles, websearchToTsquery)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const searchArticles = `-- name: SearchArticles :many
 SELECT
     id, title, slug, summary,
     category_id, view_count, published_at, created_at,
-    0 as rank
+    (
+        ts_rank(search_vector, websearch_to_tsquery('english', $1)) * 2 +
+        CASE WHEN title ILIKE '%' || $1 || '%' THEN 1.0 ELSE 0.0 END +
+        CASE WHEN summary ILIKE '%' || $1 || '%' THEN 0.5 ELSE 0.0 END
+    )::float8 as rank
 FROM articles
 WHERE status = 'published'
-    AND title ILIKE '%' || $1 || '%'
-ORDER BY published_at DESC
+  AND (
+    search_vector @@ websearch_to_tsquery('english', $1)
+    OR title ILIKE '%' || $1 || '%'
+    OR summary ILIKE '%' || $1 || '%'
+    OR content ILIKE '%' || $1 || '%'
+  )
+ORDER BY rank DESC, published_at DESC
 LIMIT $2 OFFSET $3
 `
 
 type SearchArticlesParams struct {
-	Column1 pgtype.Text `json:"column_1"`
-	Limit   int32       `json:"limit"`
-	Offset  int32       `json:"offset"`
+	WebsearchToTsquery string `json:"websearch_to_tsquery"`
+	Limit              int32  `json:"limit"`
+	Offset             int32  `json:"offset"`
 }
 
 type SearchArticlesRow struct {
@@ -38,11 +66,11 @@ type SearchArticlesRow struct {
 	ViewCount   int32            `json:"view_count"`
 	PublishedAt pgtype.Timestamp `json:"published_at"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
-	Rank        int32            `json:"rank"`
+	Rank        float64          `json:"rank"`
 }
 
 func (q *Queries) SearchArticles(ctx context.Context, arg SearchArticlesParams) ([]SearchArticlesRow, error) {
-	rows, err := q.db.Query(ctx, searchArticles, arg.Column1, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, searchArticles, arg.WebsearchToTsquery, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

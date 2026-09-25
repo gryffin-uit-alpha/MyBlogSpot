@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/db"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/handler"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/model"
@@ -45,7 +46,7 @@ func TestListComments(t *testing.T) {
 
 	// Create test comments
 	for i := 1; i <= 3; i++ {
-		_, err := testQueries.CreateComment(ctx, db.CreateCommentParams{
+		c, err := testQueries.CreateComment(ctx, db.CreateCommentParams{
 			ArticleID: article.ID,
 			Nickname:  "User" + string(rune('0'+i)),
 			Content:   "Test comment " + string(rune('0'+i)),
@@ -53,6 +54,9 @@ func TestListComments(t *testing.T) {
 		})
 		if err != nil {
 			t.Fatalf("Failed to create comment: %v", err)
+		}
+		if err := testQueries.ApproveComment(ctx, c.ID); err != nil {
+			t.Fatalf("Failed to approve comment: %v", err)
 		}
 	}
 
@@ -364,7 +368,7 @@ func TestDeleteComment(t *testing.T) {
 	r.Delete("/api/v1/comments/{id}", commentHandler.DeleteComment)
 
 	// Make request
-	commentIDStr := string(comment.ID.Bytes[:])
+	commentIDStr := uuid.UUID(comment.ID.Bytes).String()
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/comments/"+commentIDStr, nil)
 	rec := httptest.NewRecorder()
 

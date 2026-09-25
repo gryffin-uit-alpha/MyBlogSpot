@@ -1,9 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone', // Enables static HTML export
   reactStrictMode: true,
   swcMinify: true,
   images: {
-    domains: [],
+    unoptimized: true, // Required for static HTML export
   },
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',

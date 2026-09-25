@@ -11,9 +11,17 @@ type Config struct {
 	Env       string
 	BaseURL   string
 	Database  DatabaseConfig
+	Redis     RedisConfig
 	JWT       JWTConfig
 	CORS      CORSConfig
 	RateLimit RateLimitConfig
+	Admin     AdminConfig
+}
+
+type AdminConfig struct {
+	InitialUsername string
+	InitialPassword string
+	InitialEmail    string
 }
 
 type DatabaseConfig struct {
@@ -23,6 +31,14 @@ type DatabaseConfig struct {
 	User     string
 	Password string
 	SSLMode  string
+}
+
+type RedisConfig struct {
+	Host     string
+	Port     string
+	Password string
+	DB       int
+	Enabled  bool
 }
 
 type JWTConfig struct {
@@ -52,6 +68,13 @@ func Load() *Config {
 			Password: getEnv("DB_PASSWORD", "secret"),
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
+		Redis: RedisConfig{
+			Host:     getEnv("REDIS_HOST", "localhost"),
+			Port:     getEnv("REDIS_PORT", "6379"),
+			Password: getEnv("REDIS_PASSWORD", ""),
+			DB:       getEnvInt("REDIS_DB", 0),
+			Enabled:  getEnv("REDIS_ENABLED", "true") == "true",
+		},
 		JWT: JWTConfig{
 			Secret:     getEnv("JWT_SECRET", "change-me-in-production"),
 			Expiration: getEnvInt("JWT_EXPIRATION", 3600),
@@ -62,6 +85,11 @@ func Load() *Config {
 		RateLimit: RateLimitConfig{
 			Requests: getEnvInt("RATE_LIMIT_REQUESTS", 100),
 			Window:   getEnvInt("RATE_LIMIT_WINDOW", 60),
+		},
+		Admin: AdminConfig{
+			InitialUsername: getEnv("ADMIN_INITIAL_USERNAME", ""),
+			InitialPassword: getEnv("ADMIN_INITIAL_PASSWORD", ""),
+			InitialEmail:    getEnv("ADMIN_INITIAL_EMAIL", ""),
 		},
 	}
 }

@@ -2,8 +2,10 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -48,7 +50,7 @@ func (h *CategoryHandler) GetCategory(w http.ResponseWriter, r *http.Request) {
 
 	category, err := h.categoryService.GetBySlug(ctx, slug)
 	if err != nil {
-		if err.Error() == "category not found" {
+		if errors.Is(err, service.ErrCategoryNotFound) || strings.Contains(err.Error(), "not found") {
 			util.RespondError(w, http.StatusNotFound, "Category not found")
 			return
 		}
@@ -72,7 +74,7 @@ func (h *CategoryHandler) GetCategoryArticles(w http.ResponseWriter, r *http.Req
 	// Get category first to get its ID
 	category, err := h.categoryService.GetBySlug(ctx, slug)
 	if err != nil {
-		if err.Error() == "category not found" {
+		if errors.Is(err, service.ErrCategoryNotFound) || strings.Contains(err.Error(), "not found") {
 			util.RespondError(w, http.StatusNotFound, "Category not found")
 			return
 		}

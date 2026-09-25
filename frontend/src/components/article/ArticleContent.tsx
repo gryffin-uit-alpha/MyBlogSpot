@@ -35,7 +35,7 @@ export function ArticleContent({ content }: ArticleContentProps) {
   };
 
   return (
-    <div className="prose prose-lg max-w-none">
+    <div className="prose prose-invert prose-lg max-w-none text-gray-200 leading-relaxed font-body">
       <ReactMarkdown
         components={components}
         rehypePlugins={[rehypeRaw]}

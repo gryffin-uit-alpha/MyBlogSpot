@@ -9,6 +9,15 @@ build/
 out/
 *.exe
 *.out
+*.test
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+backend/bin/
+backend/main
+backend/server
+bin/
+server
+main
 
 # Environment variables
 .env
@@ -17,6 +26,7 @@ out/
 *.env
 !.env.example
 !.env.local.example
+!.env.prod.example
 
 # Logs
 *.log

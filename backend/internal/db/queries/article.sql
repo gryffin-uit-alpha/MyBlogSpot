@@ -24,8 +24,12 @@ LIMIT $1 OFFSET $2;
 SELECT id, title, slug, summary, content, category_id, status, view_count, published_at, created_at, updated_at
 FROM articles
 WHERE status = 'published' AND category_id = $1
-ORDER BY published_at DESC
+ORDER BY COALESCE(published_at, created_at) DESC
 LIMIT $2 OFFSET $3;
+
+-- name: CountArticlesByCategory :one
+SELECT COUNT(*) FROM articles
+WHERE status = 'published' AND category_id = $1;
 
 -- name: ListAllArticles :many
 SELECT id, title, slug, summary, content, category_id, status, view_count, published_at, created_at, updated_at

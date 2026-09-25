@@ -45,18 +45,25 @@ func (q *Queries) CountCommentsByArticle(ctx context.Context, articleID pgtype.U
 	return count, err
 }
 
-const countRecentCommentsByIP = `-- name: CountRecentCommentsByIP :one
+const countCommentsByArticleAdmin = `-- name: CountCommentsByArticleAdmin :one
 SELECT COUNT(*) FROM comments
-WHERE ip_address = $1 AND created_at > $2
+WHERE article_id = $1 AND parent_id IS NULL
 `
 
-type CountRecentCommentsByIPParams struct {
-	IpAddress pgtype.Text      `json:"ip_address"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
+func (q *Queries) CountCommentsByArticleAdmin(ctx context.Context, articleID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countCommentsByArticleAdmin, articleID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
-func (q *Queries) CountRecentCommentsByIP(ctx context.Context, arg CountRecentCommentsByIPParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countRecentCommentsByIP, arg.IpAddress, arg.CreatedAt)
+const countRecentCommentsByIP = `-- name: CountRecentCommentsByIP :one
+SELECT COUNT(*) FROM comments
+WHERE ip_address = $1 AND created_at > NOW() - INTERVAL '15 minutes'
+`
+
+func (q *Queries) CountRecentCommentsByIP(ctx context.Context, ipAddress pgtype.Text) (int64, error) {
+	row := q.db.QueryRow(ctx, countRecentCommentsByIP, ipAddress)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

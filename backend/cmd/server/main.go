@@ -5,8 +5,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/gryffin-uit-alpha/myblogspot/internal/cache"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/config"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/db"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/handler"
@@ -42,14 +47,30 @@ func main() {
 
 	log.Println("Database connection established")
 
+	// Initialize Redis cache connection
+	redisClient := cache.NewRedisClient(cfg.Redis)
+	if redisClient != nil {
+		defer redisClient.Close()
+	}
+	appCache := cache.NewRedisCache(redisClient)
+
 	// Initialize queries and services
 	queries := db.New(pool)
-	articleService := service.NewArticleService(queries)
-	categoryService := service.NewCategoryService(queries)
-	tagService := service.NewTagService(queries)
+	articleService := service.NewArticleService(queries, appCache)
+	categoryService := service.NewCategoryService(queries, appCache)
+	tagService := service.NewTagService(queries, appCache)
 	searchService := service.NewSearchService(queries)
 	commentService := service.NewCommentService(queries)
 	adminService := service.NewAdminService(queries, cfg.JWT.Secret)
+
+	// Bootstrap initial admin account if configured (via Secret / Environment)
+	if cfg.Admin.InitialUsername != "" && cfg.Admin.InitialPassword != "" {
+		if err := adminService.BootstrapInitialAdmin(ctx, cfg.Admin.InitialUsername, cfg.Admin.InitialPassword, cfg.Admin.InitialEmail); err != nil {
+			log.Printf("⚠️ Warning: failed to bootstrap initial admin: %v", err)
+		} else {
+			log.Printf("👤 Initial admin bootstrap verified for user: %s", cfg.Admin.InitialUsername)
+		}
+	}
 	imageService := service.NewImageService(queries, "./uploads", cfg.BaseURL)
 	homepageService := service.NewHomepageService(queries)
 	sessionService := service.NewSessionService(queries)
@@ -64,12 +85,15 @@ func main() {
 	adminHandler := handler.NewAdminHandler(adminService)
 	imageHandler := handler.NewImageHandler(imageService)
 	homepageHandler := handler.NewHomepageHandler(homepageService)
-	healthHandler := handler.NewHealthHandler(pool)
+	healthHandler := handler.NewHealthHandler(pool, redisClient)
 	feedHandler := handler.NewFeedHandler(articleService, cfg.BaseURL)
 	sitemapHandler := handler.NewSitemapHandler(articleService, categoryService, tagService, cfg.BaseURL)
 
 	// Setup router
 	r := chi.NewRouter()
+
+	// Observability & Telemetry Middleware (Prometheus RED Metrics)
+	r.Use(middleware.PrometheusMiddleware)
 
 	r.Use(middleware.Logger)
 	r.Use(middleware.CORS(cfg.CORS.AllowedOrigins))
@@ -77,8 +101,11 @@ func main() {
 	r.Use(middleware.CacheControl())
 	r.Use(middleware.SessionMiddleware(sessionService))
 
-	// Health check
-	r.Get("/health", healthHandler.Check)
+	// Kubernetes Health Probes & Observability Endpoints
+	r.Get("/livez", healthHandler.LivezHandler)   // Liveness Probe
+	r.Get("/readyz", healthHandler.ReadyzHandler) // Readiness Probe
+	r.Get("/health", healthHandler.Check)        // Diagnostic Health
+	r.Handle("/metrics", middleware.MetricsHandler()) // Prometheus Scrape Target
 
 	// RSS feed and sitemap
 	r.Get("/feed.xml", feedHandler.RSS)
@@ -88,78 +115,109 @@ func main() {
 	fileServer := http.FileServer(http.Dir("./uploads"))
 	r.Handle("/uploads/*", http.StripPrefix("/uploads/", fileServer))
 
-	// Public API routes
-	r.Route("/api/v1", func(r chi.Router) {
+	// Register API routes for both /api/v1 and root / (ensures full frontend compatibility)
+	registerAPIRoutes := func(api chi.Router) {
 		// Article routes
-		r.Get("/articles", articleHandler.ListArticles)
-		r.Get("/articles/{slug}", articleHandler.GetArticle)
-		r.Post("/articles/{id}/view", articleHandler.TrackView)
+		api.Get("/articles", articleHandler.ListArticles)
+		api.Get("/articles/{slug}", articleHandler.GetArticle)
+		api.Post("/articles/{id}/view", articleHandler.TrackView)
 
 		// Category routes
-		r.Get("/categories", categoryHandler.ListCategories)
-		r.Get("/categories/{slug}", categoryHandler.GetCategory)
-		r.Get("/categories/{slug}/articles", categoryHandler.GetCategoryArticles)
+		api.Get("/categories", categoryHandler.ListCategories)
+		api.Get("/categories/{slug}", categoryHandler.GetCategory)
+		api.Get("/categories/{slug}/articles", categoryHandler.GetCategoryArticles)
 
 		// Tag routes
-		r.Get("/tags", tagHandler.ListTags)
-		r.Get("/tags/{slug}", tagHandler.GetTag)
-		r.Get("/tags/{slug}/articles", tagHandler.GetTagArticles)
+		api.Get("/tags", tagHandler.ListTags)
+		api.Get("/tags/{slug}", tagHandler.GetTag)
+		api.Get("/tags/{slug}/articles", tagHandler.GetTagArticles)
 
 		// Search route
-		r.Get("/search", searchHandler.Search)
+		api.Get("/search", searchHandler.Search)
 
 		// Comment routes (public)
-		r.Get("/articles/{slug}/comments", commentHandler.ListComments)
-		r.Post("/articles/{slug}/comments", commentHandler.CreateComment)
+		api.Get("/articles/{slug}/comments", commentHandler.ListComments)
+		api.Post("/articles/{slug}/comments", commentHandler.CreateComment)
 
 		// Related articles (public)
-		r.Get("/articles/{slug}/related", articleHandler.GetRelatedArticles)
+		api.Get("/articles/{slug}/related", articleHandler.GetRelatedArticles)
 
 		// Homepage routes (public)
-		r.Get("/homepage", homepageHandler.GetSettings)
+		api.Get("/homepage", homepageHandler.GetSettings)
 
 		// Admin routes
-		r.Post("/admin/login", adminHandler.Login)
+		api.Post("/admin/login", adminHandler.Login)
 
 		// Protected admin routes
-		r.Group(func(r chi.Router) {
-			r.Use(middleware.Auth(cfg.JWT.Secret))
+		api.Group(func(admin chi.Router) {
+			admin.Use(middleware.Auth(cfg.JWT.Secret))
 
 			// Admin article management
-			r.Get("/admin/articles", articleHandler.ListAllArticles)
-			r.Get("/admin/articles/{id}", articleHandler.GetArticleByID)
-			r.Post("/admin/articles", articleHandler.CreateArticle)
-			r.Put("/admin/articles/{id}", articleHandler.UpdateArticle)
-			r.Delete("/admin/articles/{id}", articleHandler.DeleteArticle)
+			admin.Get("/admin/articles", articleHandler.ListAllArticles)
+			admin.Get("/admin/articles/{id}", articleHandler.GetArticleByID)
+			admin.Post("/admin/articles", articleHandler.CreateArticle)
+			admin.Put("/admin/articles/{id}", articleHandler.UpdateArticle)
+			admin.Delete("/admin/articles/{id}", articleHandler.DeleteArticle)
 
 			// Admin comment moderation
-			r.Get("/admin/comments", commentHandler.ListAllComments)
-			r.Get("/admin/articles/{id}/comments", commentHandler.ListCommentsByArticleID)
-			r.Put("/admin/comments/{id}/approve", commentHandler.ApproveComment)
-			r.Delete("/admin/comments/{id}", commentHandler.DeleteComment)
+			admin.Get("/admin/comments", commentHandler.ListAllComments)
+			admin.Get("/admin/articles/{id}/comments", commentHandler.ListCommentsByArticleID)
+			admin.Put("/admin/comments/{id}/approve", commentHandler.ApproveComment)
+			admin.Delete("/admin/comments/{id}", commentHandler.DeleteComment)
 
 			// Admin category management
-			r.Post("/admin/categories", categoryHandler.CreateCategory)
-			r.Put("/admin/categories/{id}", categoryHandler.UpdateCategory)
-			r.Delete("/admin/categories/{id}", categoryHandler.DeleteCategory)
+			admin.Post("/admin/categories", categoryHandler.CreateCategory)
+			admin.Put("/admin/categories/{id}", categoryHandler.UpdateCategory)
+			admin.Delete("/admin/categories/{id}", categoryHandler.DeleteCategory)
 
 			// Admin tag management
-			r.Post("/admin/tags", tagHandler.CreateTag)
-			r.Put("/admin/tags/{id}", tagHandler.UpdateTag)
-			r.Delete("/admin/tags/{id}", tagHandler.DeleteTag)
+			admin.Post("/admin/tags", tagHandler.CreateTag)
+			admin.Put("/admin/tags/{id}", tagHandler.UpdateTag)
+			admin.Delete("/admin/tags/{id}", tagHandler.DeleteTag)
 
 			// Admin image management
-			r.Post("/admin/images", imageHandler.UploadImage)
-			r.Get("/admin/images", imageHandler.ListImages)
-			r.Delete("/admin/images/{id}", imageHandler.DeleteImage)
+			admin.Post("/admin/images", imageHandler.UploadImage)
+			admin.Get("/admin/images", imageHandler.ListImages)
+			admin.Delete("/admin/images/{id}", imageHandler.DeleteImage)
 
 			// Admin homepage management
-			r.Put("/admin/homepage", homepageHandler.UpdateSettings)
+			admin.Put("/admin/homepage", homepageHandler.UpdateSettings)
 		})
-	})
-
-	log.Printf("Server starting on port %s", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
-		log.Fatal(err)
 	}
+
+	// Mount routes under /api/v1 AND root / for seamless compatibility
+	r.Route("/api/v1", registerAPIRoutes)
+	r.Group(registerAPIRoutes)
+
+	srv := &http.Server{
+		Addr:         ":" + cfg.Port,
+		Handler:      r,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// Run HTTP server in a separate goroutine
+	go func() {
+		log.Printf("🚀 MyBlogSpot Server starting on port %s", cfg.Port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server ListenAndServe error: %v", err)
+		}
+	}()
+
+	// Listen for OS interrupt signals (SIGINT / SIGTERM)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-quit
+	log.Printf("🛑 Received signal [%v]. Initiating graceful shutdown...", sig)
+
+	// Context with timeout to finish in-flight requests
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("Server forced to shutdown with error: %v", err)
+	}
+
+	log.Println("✅ MyBlogSpot Server shut down gracefully.")
 }

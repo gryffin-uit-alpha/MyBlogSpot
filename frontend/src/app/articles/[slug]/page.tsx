@@ -203,39 +203,39 @@ export default function ArticlePage() {
           >
             {/* Breadcrumb */}
             <div className="mb-5">
-              <Link href="/articles" className="font-mono text-xs text-gray-600 hover:text-cyan-400 transition-colors">
-                <span className="text-gray-700">&gt;</span> cd ../log_files
+              <Link href="/articles" className="font-mono text-xs text-gray-400 hover:text-cyan-400 transition-colors">
+                <span className="text-cyan-400">&gt;</span> cd ../log_files
               </Link>
             </div>
 
             {/* Header */}
             <div className="mb-7">
-              <h1 className="heading-1 mb-3">{article.title}</h1>
+              <h1 className="heading-1 mb-3 text-white font-bold">{article.title}</h1>
 
-              <div className="flex flex-wrap items-center gap-2.5 font-mono text-xs text-gray-600 mb-2">
+              <div className="flex flex-wrap items-center gap-2.5 font-mono text-xs text-gray-400 mb-4">
                 <span className="flex items-center gap-2">
-                  <span className="text-gray-700">published:</span>
-                  <time dateTime={article.published_at || article.created_at} className="text-gray-500">
+                  <span className="text-gray-400">published:</span>
+                  <time dateTime={article.published_at || article.created_at} className="text-gray-200">
                     {formattedDate}
                   </time>
                 </span>
 
-                <span className="text-gray-800">|</span>
+                <span className="text-gray-600">|</span>
 
                 <span className="flex items-center gap-2">
-                  <span className="text-gray-700">views:</span>
-                  <span className="text-gray-500">{article.view_count}</span>
+                  <span className="text-gray-400">views:</span>
+                  <span className="text-gray-200">{article.view_count}</span>
                 </span>
 
                 {article.category && (
                   <>
-                    <span className="text-gray-800">|</span>
+                    <span className="text-gray-600">|</span>
                     <Link
                       href={`/categories/${article.category.slug}`}
-                      className="flex items-center gap-2 hover:text-purple-400 transition-colors"
+                      className="flex items-center gap-2 hover:text-purple-300 transition-colors"
                     >
-                      <span className="text-gray-700">category:</span>
-                      <span className="text-purple-400">{article.category.name}</span>
+                      <span className="text-gray-400">category:</span>
+                      <span className="text-purple-300 font-medium">{article.category.name}</span>
                     </Link>
                   </>
                 )}
@@ -247,7 +247,7 @@ export default function ArticlePage() {
                     <Link
                       key={tag.id}
                       href={`/tags/${tag.slug}`}
-                      className="px-2.5 py-1 bg-gray-800/50 border border-gray-700 hover:border-gray-600 text-gray-500 hover:text-gray-400 rounded font-mono text-xs transition-all"
+                      className="px-2.5 py-1 bg-cyan-950/40 border border-cyan-800/60 hover:border-cyan-500/60 text-cyan-300 hover:text-cyan-200 rounded font-mono text-xs transition-all"
                     >
                       #{tag.name}
                     </Link>
@@ -257,7 +257,7 @@ export default function ArticlePage() {
             </div>
 
             {/* Content - Terminal Pane Style */}
-            <div className="glass-card p-6 lg:p-9 mb-8 border-l-4 border-cyan-500/50">
+            <div className="glass-card p-6 lg:p-9 mb-8 border-l-4 border-cyan-500 bg-[#0e1628]/80">
               <ArticleContent content={article.content} />
 
               {/* Share Buttons */}

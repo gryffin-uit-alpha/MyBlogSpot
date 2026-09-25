@@ -37,6 +37,7 @@ export interface CommentWithArticle {
   article_slug: string
   nickname: string
   content: string
+  approved: boolean
   created_at: string
 }
 

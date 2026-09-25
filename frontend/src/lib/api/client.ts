@@ -1,10 +1,17 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+function getBaseUrl(): string {
+  if (typeof window === 'undefined') {
+    return (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://backend:8080').replace(/\/+$/, '');
+  }
+  return (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+}
 
 export async function apiClient<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> {
-  const url = `${API_URL}${endpoint}`
+  const baseUrl = getBaseUrl();
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${baseUrl}${cleanEndpoint}`;
 
   // Get token from localStorage if available
   const token = typeof window !== 'undefined'
@@ -22,6 +29,7 @@ export async function apiClient<T>(
   }
 
   const response = await fetch(url, {
+    cache: 'no-store',
     ...options,
     credentials: 'include',
     headers,

@@ -66,18 +66,18 @@ export function RelatedArticles({ currentSlug }: RelatedArticlesProps) {
               href={`/articles/${article.slug}`}
               className="block group glass-card p-6 border-gray-800 hover:border-cyan-500/30 transition-all"
             >
-              <h3 className="text-lg font-semibold text-gray-100 group-hover:text-cyan-400 transition-colors mb-2 font-heading">
+              <h3 className="text-lg font-semibold text-white group-hover:text-cyan-400 transition-colors mb-2 font-heading">
                 {article.title}
               </h3>
               {article.summary && (
-                <p className="text-gray-500 text-sm line-clamp-2 mb-3">
+                <p className="text-slate-300 text-sm line-clamp-2 mb-3 leading-relaxed">
                   {article.summary}
                 </p>
               )}
-              <div className="flex items-center gap-2 text-xs text-gray-600 font-mono">
-                <span>{new Date(article.created_at).toLocaleDateString()}</span>
-                <span>•</span>
-                <span className="text-cyan-400 group-hover:text-cyan-300">Read more →</span>
+              <div className="flex items-center gap-2 text-xs text-gray-400 font-mono">
+                <span className="text-gray-300">{new Date(article.created_at).toLocaleDateString()}</span>
+                <span className="text-gray-600">•</span>
+                <span className="text-cyan-400 group-hover:text-cyan-300 font-medium">Read more →</span>
               </div>
             </Link>
           </motion.div>

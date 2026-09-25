@@ -1,17 +1,21 @@
 'use client';
 
-import { useState, FormEvent, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, FormEvent, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 
-export default function LoginPage() {
+function LoginContent() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const secret = searchParams.get('secret');
+  const expectedSecret = process.env.NEXT_PUBLIC_ADMIN_LOGIN_SECRET || 'admin123';
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -33,6 +37,38 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  if (secret !== expectedSecret) {
+    return (
+      <div className="min-h-screen bg-[#0B0F19] flex flex-col items-center justify-center text-center p-4 relative overflow-hidden">
+        {/* Background Effects */}
+        <div className="fixed inset-0 opacity-10 pointer-events-none">
+          <div className="absolute inset-0 matrix-grid"></div>
+        </div>
+        <div className="fixed top-20 left-20 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="fixed bottom-20 right-20 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="max-w-md w-full relative z-10"
+        >
+          <h1 className="text-9xl font-bold text-gray-800 font-mono">404</h1>
+          <h2 className="text-2xl font-semibold text-cyan-400/80 mt-4 mb-2 font-heading">Page Not Found</h2>
+          <p className="text-gray-500 font-mono text-sm max-w-sm mx-auto mb-8">
+            The requested resource could not be found on this server.
+          </p>
+          <a
+            href="/"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-lg font-mono text-sm hover:bg-cyan-500/20 hover:border-cyan-500/50 transition-all"
+          >
+            <span>[ Return_Home ]</span>
+          </a>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0B0F19] flex items-center justify-center px-4 relative overflow-hidden">
@@ -162,5 +198,20 @@ export default function LoginPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0B0F19] flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+          <p className="mt-4 font-mono text-sm text-gray-500">Initializing connection...</p>
+        </div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

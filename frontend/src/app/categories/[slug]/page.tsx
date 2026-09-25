@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation';
 import { getCategory, getCategoryArticles } from '@/lib/api/categories';
 import ArticleCard from '@/components/article/ArticleCard';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface CategoryPageProps {
   params: { slug: string };
   searchParams: { page?: string };

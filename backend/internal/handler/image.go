@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/service"
+	"github.com/gryffin-uit-alpha/myblogspot/internal/util"
 )
 
 type ImageHandler struct {
@@ -19,13 +20,13 @@ func NewImageHandler(service *service.ImageService) *ImageHandler {
 
 func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		http.Error(w, "File too large (max 10MB)", http.StatusBadRequest)
+		util.RespondError(w, http.StatusBadRequest, "File too large (max 10MB)")
 		return
 	}
 
 	file, header, err := r.FormFile("image")
 	if err != nil {
-		http.Error(w, "Failed to read image file", http.StatusBadRequest)
+		util.RespondError(w, http.StatusBadRequest, "Failed to read image file")
 		return
 	}
 	defer file.Close()
@@ -39,7 +40,7 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.service.UploadImage(r.Context(), file, header, folder, altText)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		util.RespondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -79,7 +80,7 @@ func (h *ImageHandler) ListImages(w http.ResponseWriter, r *http.Request) {
 
 	images, total, err := h.service.ListImages(r.Context(), folderPtr, int32(limit), int32(offset))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		util.RespondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -100,12 +101,12 @@ func (h *ImageHandler) ListImages(w http.ResponseWriter, r *http.Request) {
 func (h *ImageHandler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		http.Error(w, "Image ID is required", http.StatusBadRequest)
+		util.RespondError(w, http.StatusBadRequest, "Image ID is required")
 		return
 	}
 
 	if err := h.service.DeleteImage(r.Context(), id); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		util.RespondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 

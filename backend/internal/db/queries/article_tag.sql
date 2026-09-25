@@ -24,3 +24,10 @@ INNER JOIN article_tags at ON a.id = at.article_id
 WHERE at.tag_id = $1 AND a.status = 'published'
 ORDER BY a.published_at DESC
 LIMIT $2 OFFSET $3;
+
+-- name: CountTagArticles :one
+SELECT COUNT(*)
+FROM articles a
+INNER JOIN article_tags at ON a.id = at.article_id
+WHERE at.tag_id = $1 AND a.status = 'published';
+

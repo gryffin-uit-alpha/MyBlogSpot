@@ -32,15 +32,20 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse pagination parameters
+	// Parse pagination parameters (default limit 10 for search)
 	limit, offset := util.ParsePagination(r)
+	if r.URL.Query().Get("limit") == "" && r.URL.Query().Get("per_page") == "" {
+		limit = 10
+	}
 
 	// Search articles
-	articles, err := h.searchService.SearchArticles(ctx, query, limit, offset)
+	articles, total, err := h.searchService.SearchArticles(ctx, query, limit, offset)
 	if err != nil {
 		util.RespondError(w, http.StatusInternalServerError, "Search failed")
 		return
 	}
 
-	util.RespondSuccess(w, http.StatusOK, articles, nil)
+	page := int(offset/limit) + 1
+	meta := util.CalculatePagination(page, int(limit), int(total))
+	util.RespondSuccess(w, http.StatusOK, articles, meta)
 }

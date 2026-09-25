@@ -17,6 +17,7 @@ import (
 
 // TestSearchArticles tests GET /api/v1/search with PostgreSQL FTS
 func TestSearchArticles(t *testing.T) {
+	setupTestDB(t)
 	cleanupDatabase(t)
 	ctx := context.Background()
 

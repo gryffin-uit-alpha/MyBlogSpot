@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gryffin-uit-alpha/myblogspot/internal/cache"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/db"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/model"
 	"github.com/jackc/pgx/v5"
@@ -16,11 +17,16 @@ import (
 // ArticleService handles article business logic
 type ArticleService struct {
 	queries *db.Queries
+	cache   cache.Cache
 }
 
-// NewArticleService creates a new article service
-func NewArticleService(queries *db.Queries) *ArticleService {
-	return &ArticleService{queries: queries}
+// NewArticleService creates a new article service with optional cache support
+func NewArticleService(queries *db.Queries, c ...cache.Cache) *ArticleService {
+	var appCache cache.Cache
+	if len(c) > 0 {
+		appCache = c[0]
+	}
+	return &ArticleService{queries: queries, cache: appCache}
 }
 
 // ListPublished returns a paginated list of published articles
@@ -91,8 +97,14 @@ func (s *ArticleService) ListPublished(ctx context.Context, limit, offset int32)
 	return dtos, total, nil
 }
 
-// GetBySlug returns a published article by slug
+// GetBySlug returns a published article by slug (cached in Redis)
 func (s *ArticleService) GetBySlug(ctx context.Context, slug string) (*model.ArticleDTO, error) {
+	cacheKey := fmt.Sprintf("myblogspot:article:%s", slug)
+	var cached model.ArticleDTO
+	if s.cache != nil && s.cache.Get(ctx, "articles", cacheKey, &cached) {
+		return &cached, nil
+	}
+
 	article, err := s.queries.GetArticleBySlug(ctx, slug)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -113,6 +125,10 @@ func (s *ArticleService) GetBySlug(ctx context.Context, slug string) (*model.Art
 		PublishedAt: pgTimestampToTimePtr(article.PublishedAt),
 		CreatedAt:   pgTimestampToTime(article.CreatedAt),
 		UpdatedAt:   pgTimestampToTime(article.UpdatedAt),
+	}
+
+	if s.cache != nil {
+		_ = s.cache.Set(ctx, cacheKey, *dto, 5*time.Minute)
 	}
 
 	return dto, nil
@@ -152,6 +168,11 @@ func (s *ArticleService) Create(ctx context.Context, req model.CreateArticleRequ
 		return nil, fmt.Errorf("failed to create article: %w", err)
 	}
 
+	if req.Status == "published" {
+		_ = s.queries.PublishArticle(ctx, article.ID)
+		article.PublishedAt = pgtype.Timestamp{Time: time.Now(), Valid: true}
+	}
+
 	// Add tags if provided
 	for _, tagID := range req.TagIDs {
 		err := s.queries.AddArticleTag(ctx, db.AddArticleTagParams{
@@ -175,6 +196,11 @@ func (s *ArticleService) Create(ctx context.Context, req model.CreateArticleRequ
 		PublishedAt: pgTimestampToTimePtr(article.PublishedAt),
 		CreatedAt:   pgTimestampToTime(article.CreatedAt),
 		UpdatedAt:   pgTimestampToTime(article.UpdatedAt),
+	}
+
+	if s.cache != nil {
+		_ = s.cache.DeletePattern(ctx, "myblogspot:article:*")
+		_ = s.cache.Delete(ctx, "myblogspot:categories:all")
 	}
 
 	return dto, nil
@@ -209,6 +235,11 @@ func (s *ArticleService) Update(ctx context.Context, id uuid.UUID, req model.Upd
 		return nil, fmt.Errorf("failed to update article: %w", err)
 	}
 
+	if req.Status == "published" && !article.PublishedAt.Valid {
+		_ = s.queries.PublishArticle(ctx, pgID)
+		article.PublishedAt = pgtype.Timestamp{Time: time.Now(), Valid: true}
+	}
+
 	// Update tags: remove all then add new
 	if err := s.queries.RemoveAllArticleTags(ctx, pgID); err != nil {
 		return nil, fmt.Errorf("failed to remove article tags: %w", err)
@@ -238,6 +269,11 @@ func (s *ArticleService) Update(ctx context.Context, id uuid.UUID, req model.Upd
 		UpdatedAt:   pgTimestampToTime(article.UpdatedAt),
 	}
 
+	if s.cache != nil {
+		_ = s.cache.DeletePattern(ctx, "myblogspot:article:*")
+		_ = s.cache.Delete(ctx, "myblogspot:categories:all")
+	}
+
 	return dto, nil
 }
 
@@ -248,6 +284,12 @@ func (s *ArticleService) Delete(ctx context.Context, id uuid.UUID) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete article: %w", err)
 	}
+
+	if s.cache != nil {
+		_ = s.cache.DeletePattern(ctx, "myblogspot:article:*")
+		_ = s.cache.Delete(ctx, "myblogspot:categories:all")
+	}
+
 	return nil
 }
 

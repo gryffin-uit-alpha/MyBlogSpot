@@ -36,7 +36,7 @@ func TestSearchService_SearchArticles_EmptyQuery(t *testing.T) {
 	setupSearchService(t)
 	ctx := context.Background()
 
-	results, err := searchService.SearchArticles(ctx, "", 10, 0)
+	results, _, err := searchService.SearchArticles(ctx, "", 10, 0)
 	if err != nil {
 		t.Fatalf("Expected no error for empty query, got: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestSearchService_SearchArticles_BasicSearch(t *testing.T) {
 	setupSearchService(t)
 	ctx := context.Background()
 
-	results, err := searchService.SearchArticles(ctx, "golang", 10, 0)
+	results, _, err := searchService.SearchArticles(ctx, "golang", 10, 0)
 	if err != nil {
 		t.Fatalf("Search failed: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestSearchService_SearchArticles_MultiWordQuery(t *testing.T) {
 	setupSearchService(t)
 	ctx := context.Background()
 
-	results, err := searchService.SearchArticles(ctx, "go programming language", 10, 0)
+	results, _, err := searchService.SearchArticles(ctx, "go programming language", 10, 0)
 	if err != nil {
 		t.Fatalf("Search failed: %v", err)
 	}
@@ -80,12 +80,12 @@ func TestSearchService_SearchArticles_Pagination(t *testing.T) {
 	ctx := context.Background()
 
 	// Test with different limits and offsets
-	results1, err := searchService.SearchArticles(ctx, "test", 5, 0)
+	results1, _, err := searchService.SearchArticles(ctx, "test", 5, 0)
 	if err != nil {
 		t.Fatalf("Search failed: %v", err)
 	}
 
-	results2, err := searchService.SearchArticles(ctx, "test", 5, 5)
+	results2, _, err := searchService.SearchArticles(ctx, "test", 5, 5)
 	if err != nil {
 		t.Fatalf("Search failed: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestSearchService_SearchArticles_SpecialCharacters(t *testing.T) {
 	}
 
 	for _, query := range queries {
-		results, err := searchService.SearchArticles(ctx, query, 10, 0)
+		results, _, err := searchService.SearchArticles(ctx, query, 10, 0)
 		if err != nil {
 			t.Errorf("Search failed for query '%s': %v", query, err)
 		}

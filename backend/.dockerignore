@@ -1,0 +1,27 @@
+# Binaries
+bin/
+main
+server
+*.exe
+*.test
+*.out
+
+# Development files
+.env
+.env.local
+*.log
+
+# Test files
+tests/
+*_test.go
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+docs/
+
+# Uploads (will be mounted as volume in production)
+uploads/

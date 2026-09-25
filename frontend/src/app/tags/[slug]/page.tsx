@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation';
 import { getTag, getTagArticles } from '@/lib/api/tags';
 import ArticleCard from '@/components/article/ArticleCard';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface TagPageProps {
   params: { slug: string };
   searchParams: { page?: string };

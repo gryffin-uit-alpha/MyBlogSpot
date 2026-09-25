@@ -21,34 +21,34 @@ export default function ArticleCard({ article }: ArticleCardProps) {
   return (
     <article className="glass-card p-6 hover:border-purple-500/40 transition-all h-full flex flex-col">
       <Link href={`/articles/${article.slug}`} className="group flex-1">
-        <h2 className="text-xl font-bold text-gray-100 group-hover:text-purple-400 transition-colors mb-3 font-heading">
+        <h2 className="text-xl font-bold text-white group-hover:text-purple-400 transition-colors mb-3 font-heading">
           {article.title}
         </h2>
 
         {article.summary && (
-          <p className="body-small text-gray-400 line-clamp-3 mb-4">{article.summary}</p>
+          <p className="body-small text-slate-300 line-clamp-3 mb-4 leading-relaxed">{article.summary}</p>
         )}
       </Link>
 
-      <div className="flex items-center justify-between text-xs font-mono text-gray-600 pt-3 border-t border-gray-800">
+      <div className="flex items-center justify-between text-xs font-mono text-gray-400 pt-3 border-t border-gray-800">
         <div className="flex items-center gap-3">
-          <time dateTime={article.published_at || article.created_at}>
+          <time dateTime={article.published_at || article.created_at} className="text-gray-300">
             {formattedDate}
           </time>
 
           {article.category && (
             <Link
               href={`/categories/${article.category.slug}`}
-              className="text-purple-400 hover:text-purple-300 transition-colors"
+              className="text-purple-300 hover:text-purple-200 font-medium transition-colors"
             >
               {article.category.name}
             </Link>
           )}
         </div>
 
-        <span className="flex items-center gap-1">
+        <span className="flex items-center gap-1 text-gray-300">
           <svg
-            className="w-3 h-3"
+            className="w-3.5 h-3.5 text-gray-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -76,7 +76,7 @@ export default function ArticleCard({ article }: ArticleCardProps) {
             <Link
               key={tag.id}
               href={`/tags/${tag.slug}`}
-              className="text-xs px-2 py-1 bg-amber-500/10 border border-amber-500/30 hover:border-amber-500/50 text-amber-400 rounded font-mono transition-colors"
+              className="text-xs px-2 py-1 bg-amber-500/15 border border-amber-500/40 hover:border-amber-500/60 text-amber-300 rounded font-mono transition-colors"
             >
               #{tag.name}
             </Link>

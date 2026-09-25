@@ -19,7 +19,7 @@ Configure in Gitea repository settings → Secrets:
 
 # Or via API:
 curl -X POST "https://gitea.example.com/api/v1/repos/OWNER/REPO/secrets" \
-  -H "Authorization: token YOUR_GITEA_TOKEN" \
+  -H "Authorization: token <GITEA_PERSONAL_ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "DEPENDENCY_TRACK_URL",

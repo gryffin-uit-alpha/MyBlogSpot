@@ -18,11 +18,11 @@
   --color-accent-gold: #FFD700;      /* Gold - Esports rank */
 
   /* Semantic Colors */
-  --color-text-primary: #F9FAFB;
-  --color-text-secondary: #9CA3AF;
-  --color-text-tertiary: #6B7280;
-  --color-border: rgba(156, 163, 175, 0.1);
-  --color-border-hover: rgba(156, 163, 175, 0.2);
+  --color-text-primary: #F8FAFC;
+  --color-text-secondary: #CBD5E1;
+  --color-text-tertiary: #94A3B8;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-hover: rgba(34, 211, 238, 0.3);
 
   /* Mood Vibe Colors */
   --color-vibe-critical: #EF4444;    /* Red - Heavy thoughts */
@@ -115,12 +115,14 @@ body {
   font-family: var(--font-body);
   font-size: 1rem;
   line-height: 1.7;
+  color: var(--color-text-secondary);
 }
 
 .body-small {
   font-family: var(--font-body);
   font-size: 0.875rem;
   line-height: 1.6;
+  color: var(--color-text-secondary);
 }
 
 .mono-metadata {

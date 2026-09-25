@@ -2,8 +2,10 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -47,7 +49,7 @@ func (h *TagHandler) GetTag(w http.ResponseWriter, r *http.Request) {
 
 	tag, err := h.tagService.GetBySlug(ctx, slug)
 	if err != nil {
-		if err.Error() == "tag not found" {
+		if errors.Is(err, service.ErrTagNotFound) || strings.Contains(err.Error(), "not found") {
 			util.RespondError(w, http.StatusNotFound, "Tag not found")
 			return
 		}
@@ -71,7 +73,7 @@ func (h *TagHandler) GetTagArticles(w http.ResponseWriter, r *http.Request) {
 	// Get tag first to get its ID
 	tag, err := h.tagService.GetBySlug(ctx, slug)
 	if err != nil {
-		if err.Error() == "tag not found" {
+		if errors.Is(err, service.ErrTagNotFound) || strings.Contains(err.Error(), "not found") {
 			util.RespondError(w, http.StatusNotFound, "Tag not found")
 			return
 		}

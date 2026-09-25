@@ -49,26 +49,26 @@ export default function SearchResults({ results, query, total }: SearchResultsPr
               href={`/articles/${article.slug}`}
               className="group block"
             >
-              <h2 className="text-xl font-bold text-gray-100 group-hover:text-cyan-400 transition-colors mb-2 font-heading">
+              <h2 className="text-xl font-bold text-white group-hover:text-cyan-400 transition-colors mb-2 font-heading">
                 {article.title}
               </h2>
             </Link>
 
             {article.summary && (
-              <p className="text-gray-400 text-sm line-clamp-2 mb-3">
+              <p className="text-slate-300 text-sm line-clamp-2 mb-3 leading-relaxed">
                 {article.summary}
               </p>
             )}
 
             {article.excerpt && (
-              <p className="text-xs text-gray-600 italic mb-3">
+              <p className="text-xs text-gray-300 italic mb-3 bg-gray-800/40 p-2 rounded border border-gray-700/50">
                 ...{article.excerpt}...
               </p>
             )}
 
-            <div className="flex items-center gap-3 text-xs font-mono text-gray-600 mb-3">
+            <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-gray-400 mb-3">
               {article.published_at && (
-                <time dateTime={article.published_at} className="text-gray-500">
+                <time dateTime={article.published_at} className="text-gray-300">
                   {new Date(article.published_at).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'short',
@@ -79,10 +79,10 @@ export default function SearchResults({ results, query, total }: SearchResultsPr
 
               {article.category && (
                 <>
-                  <span className="text-gray-800">|</span>
+                  <span className="text-gray-600">|</span>
                   <Link
                     href={`/categories/${article.category.slug}`}
-                    className="text-purple-500 hover:text-purple-400 transition-colors"
+                    className="text-purple-300 hover:text-purple-200 font-medium transition-colors"
                   >
                     {article.category.name}
                   </Link>
@@ -91,8 +91,8 @@ export default function SearchResults({ results, query, total }: SearchResultsPr
 
               {article.view_count !== undefined && (
                 <>
-                  <span className="text-gray-800">|</span>
-                  <span className="text-gray-600">{article.view_count} views</span>
+                  <span className="text-gray-600">|</span>
+                  <span className="text-gray-300">{article.view_count} views</span>
                 </>
               )}
             </div>

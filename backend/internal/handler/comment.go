@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -58,13 +59,7 @@ func (h *CommentHandler) ListComments(w http.ResponseWriter, r *http.Request) {
 		comments, total, err = h.commentService.ListByArticleAdmin(ctx, slug, limit, offset)
 	} else {
 		// Extract session ID from context for regular users
-		var sessionID *uuid.UUID
-		if sid := ctx.Value(middleware.SessionIDKey); sid != nil {
-			if pgID, ok := sid.(pgtype.UUID); ok && pgID.Valid {
-				id := uuid.UUID(pgID.Bytes)
-				sessionID = &id
-			}
-		}
+		sessionID := extractSessionID(ctx)
 
 		// Get comments (session-aware: approved + user's own pending)
 		comments, total, err = h.commentService.ListByArticleWithSession(ctx, slug, sessionID, limit, offset)
@@ -113,16 +108,10 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	ipAddress := extractIPAddress(r)
 
 	// Extract session ID from context
-	var sessionID *uuid.UUID
-	if sid := ctx.Value(middleware.SessionIDKey); sid != nil {
-		if pgID, ok := sid.(pgtype.UUID); ok && pgID.Valid {
-			id := uuid.UUID(pgID.Bytes)
-			sessionID = &id
-		}
-	}
+	sessionID := extractSessionID(ctx)
 
-	// Create comment with session
-	comment, err := h.commentService.CreateWithSession(ctx, slug, req.Nickname, req.Content, ipAddress, sessionID)
+	// Create comment with session and parent_id
+	comment, err := h.commentService.CreateWithSession(ctx, slug, req.Nickname, req.Content, ipAddress, sessionID, req.ParentID)
 	if err != nil {
 		if strings.Contains(err.Error(), "required") || strings.Contains(err.Error(), "must be") {
 			util.RespondError(w, http.StatusBadRequest, err.Error())
@@ -141,6 +130,28 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.RespondSuccess(w, http.StatusCreated, comment, nil)
+}
+
+// extractSessionID safely extracts UUID from context regardless of underlying type
+func extractSessionID(ctx context.Context) *uuid.UUID {
+	sid := ctx.Value(middleware.SessionIDKey)
+	if sid == nil {
+		return nil
+	}
+	switch v := sid.(type) {
+	case uuid.UUID:
+		if v != uuid.Nil {
+			return &v
+		}
+	case *uuid.UUID:
+		return v
+	case pgtype.UUID:
+		if v.Valid {
+			id := uuid.UUID(v.Bytes)
+			return &id
+		}
+	}
+	return nil
 }
 
 // DeleteComment handles DELETE /api/v1/comments/:id

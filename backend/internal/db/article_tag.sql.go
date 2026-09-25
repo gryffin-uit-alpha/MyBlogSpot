@@ -27,6 +27,20 @@ func (q *Queries) AddArticleTag(ctx context.Context, arg AddArticleTagParams) er
 	return err
 }
 
+const countTagArticles = `-- name: CountTagArticles :one
+SELECT COUNT(*)
+FROM articles a
+INNER JOIN article_tags at ON a.id = at.article_id
+WHERE at.tag_id = $1 AND a.status = 'published'
+`
+
+func (q *Queries) CountTagArticles(ctx context.Context, tagID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countTagArticles, tagID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getArticleTags = `-- name: GetArticleTags :many
 SELECT t.id, t.name, t.slug, t.created_at FROM tags t
 INNER JOIN article_tags at ON t.id = at.tag_id

@@ -11,6 +11,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countArticlesByCategory = `-- name: CountArticlesByCategory :one
+SELECT COUNT(*) FROM articles
+WHERE status = 'published' AND category_id = $1
+`
+
+func (q *Queries) CountArticlesByCategory(ctx context.Context, categoryID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countArticlesByCategory, categoryID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countPublishedArticles = `-- name: CountPublishedArticles :one
 SELECT COUNT(*) FROM articles
 WHERE status = 'published'
@@ -291,7 +303,7 @@ const listArticlesByCategory = `-- name: ListArticlesByCategory :many
 SELECT id, title, slug, summary, content, category_id, status, view_count, published_at, created_at, updated_at
 FROM articles
 WHERE status = 'published' AND category_id = $1
-ORDER BY published_at DESC
+ORDER BY COALESCE(published_at, created_at) DESC
 LIMIT $2 OFFSET $3
 `
 

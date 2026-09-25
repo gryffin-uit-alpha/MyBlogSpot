@@ -56,6 +56,40 @@ func (s *AdminService) Login(ctx context.Context, req model.LoginRequest) (*mode
 	}, nil
 }
 
+// BootstrapInitialAdmin creates the initial admin account if not already present
+func (s *AdminService) BootstrapInitialAdmin(ctx context.Context, username, password, email string) error {
+	if username == "" || password == "" {
+		return nil
+	}
+
+	// Check if admin user already exists
+	_, err := s.queries.GetAdminByUsername(ctx, username)
+	if err == nil {
+		return nil // Idempotent: admin already exists
+	}
+
+	// Hash password
+	hash, err := util.HashPassword(password)
+	if err != nil {
+		return fmt.Errorf("failed to hash initial admin password: %w", err)
+	}
+
+	if email == "" {
+		email = username + "@myblogspot.local"
+	}
+
+	_, err = s.queries.CreateAdmin(ctx, db.CreateAdminParams{
+		Username:     username,
+		PasswordHash: hash,
+		Email:        email,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create initial admin '%s': %w", username, err)
+	}
+
+	return nil
+}
+
 func pgUUIDToUUID(u pgtype.UUID) uuid.UUID {
 	return uuid.UUID(u.Bytes)
 }

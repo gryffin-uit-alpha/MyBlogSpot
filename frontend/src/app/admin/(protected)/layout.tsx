@@ -25,7 +25,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleLogout = () => {
     logout();
-    router.push('/admin/login');
+    router.push('/');
   };
 
   const getColorClass = (color: string, active: boolean) => {

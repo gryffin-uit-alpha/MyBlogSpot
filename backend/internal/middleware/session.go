@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/service"
 )
 
@@ -45,8 +46,9 @@ func SessionMiddleware(sessionService *service.SessionService) func(http.Handler
 				sessionToken = cookie.Value
 				session, err := sessionService.GetSessionByToken(r.Context(), sessionToken)
 				if err == nil {
-					// Valid session - add to context
-					ctx := context.WithValue(r.Context(), SessionIDKey, session.ID)
+					// Valid session - add to context (ensure consistent uuid.UUID type)
+					sessionUUID := uuid.UUID(session.ID.Bytes)
+					ctx := context.WithValue(r.Context(), SessionIDKey, sessionUUID)
 					ctx = context.WithValue(ctx, SessionTokenKey, sessionToken)
 					r = r.WithContext(ctx)
 				} else {

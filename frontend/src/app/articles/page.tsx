@@ -42,17 +42,17 @@ export default function ArticlesPage() {
 
   const getMoodFromTags = (article: ArticleListItem): keyof typeof moodConfig | null => {
     if (!article.tags) return null;
-    const tagNames = article.tags.map(t => t.name.toLowerCase());
-    if (tagNames.includes('critical')) return 'critical';
-    if (tagNames.includes('ambient')) return 'ambient';
-    if (tagNames.includes('overclock')) return 'overclock';
+    const tagIdentifiers = article.tags.flatMap(t => [t.name?.toLowerCase(), t.slug?.toLowerCase()].filter(Boolean));
+    if (tagIdentifiers.includes('critical')) return 'critical';
+    if (tagIdentifiers.includes('ambient')) return 'ambient';
+    if (tagIdentifiers.includes('overclock')) return 'overclock';
     return null;
   };
 
   const articleHasMood = (article: ArticleListItem, mood: MoodFilter): boolean => {
     if (!article.tags) return false;
-    const tagNames = article.tags.map(t => t.name.toLowerCase());
-    return tagNames.includes(mood);
+    const tagIdentifiers = article.tags.flatMap(t => [t.name?.toLowerCase(), t.slug?.toLowerCase()].filter(Boolean));
+    return tagIdentifiers.includes(mood);
   };
 
   const filteredArticles = filter === 'all'
@@ -178,7 +178,7 @@ export default function ArticlesPage() {
                       {/* Header Row */}
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
-                          <h2 className="heading-3 text-gray-100 group-hover:text-cyan-400 transition-colors mb-2">
+                          <h2 className="heading-3 text-white group-hover:text-cyan-400 font-bold transition-colors mb-2">
                             {article.title}
                           </h2>
                         </div>
@@ -199,37 +199,37 @@ export default function ArticlesPage() {
                       </div>
 
                       {/* Summary */}
-                      <p className="body-base text-gray-400 mb-4 line-clamp-2">
+                      <p className="body-base text-slate-300 mb-4 line-clamp-2 leading-relaxed">
                         {article.summary}
                       </p>
 
                       {/* Metadata Row */}
-                      <div className="flex items-center gap-4 font-mono text-xs text-gray-600">
+                      <div className="flex flex-wrap items-center gap-4 font-mono text-xs text-gray-400">
                         <span className="flex items-center gap-2">
-                          <span className="text-gray-700">date:</span>
-                          <span className="text-gray-500">{formatDate(article.published_at || article.created_at)}</span>
+                          <span className="text-gray-400">date:</span>
+                          <span className="text-gray-200">{formatDate(article.published_at || article.created_at)}</span>
                         </span>
 
-                        <span className="text-gray-800">|</span>
+                        <span className="text-gray-600">|</span>
 
                         <span className="flex items-center gap-2">
-                          <span className="text-gray-700">duration_ms:</span>
-                          <span className="text-gray-500">{estimateReadTime(article.summary)}</span>
+                          <span className="text-gray-400">duration_ms:</span>
+                          <span className="text-gray-200">{estimateReadTime(article.summary)}</span>
                         </span>
 
-                        <span className="text-gray-800">|</span>
+                        <span className="text-gray-600">|</span>
 
                         <span className="flex items-center gap-2">
-                          <span className="text-gray-700">views:</span>
-                          <span className="text-gray-500">{article.view_count}</span>
+                          <span className="text-gray-400">views:</span>
+                          <span className="text-gray-200">{article.view_count}</span>
                         </span>
 
                         {article.category && (
                           <>
-                            <span className="text-gray-800">|</span>
+                            <span className="text-gray-600">|</span>
                             <span className="flex items-center gap-2">
-                              <span className="text-gray-700">category:</span>
-                              <span className="text-purple-400">{article.category.name}</span>
+                              <span className="text-gray-400">category:</span>
+                              <span className="text-purple-300 font-medium">{article.category.name}</span>
                             </span>
                           </>
                         )}
@@ -241,7 +241,7 @@ export default function ArticlesPage() {
                           {article.tags.map(tag => (
                             <span
                               key={tag.id}
-                              className="px-2 py-1 bg-gray-800/50 border border-gray-700 rounded text-xs font-mono text-gray-500"
+                              className="px-2.5 py-1 bg-cyan-950/40 border border-cyan-800/60 rounded text-xs font-mono text-cyan-300"
                             >
                               #{tag.name}
                             </span>

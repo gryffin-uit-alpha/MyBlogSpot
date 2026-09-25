@@ -48,7 +48,7 @@ WHERE article_id = $1 AND approved = true;
 
 -- name: CountRecentCommentsByIP :one
 SELECT COUNT(*) FROM comments
-WHERE ip_address = $1 AND created_at > $2;
+WHERE ip_address = $1 AND created_at > NOW() - INTERVAL '15 minutes';
 
 -- name: CountAllComments :one
 SELECT COUNT(*) FROM comments;
@@ -63,3 +63,7 @@ SELECT * FROM comments
 WHERE article_id = $1 AND parent_id IS NULL
 ORDER BY created_at ASC
 LIMIT $2 OFFSET $3;
+
+-- name: CountCommentsByArticleAdmin :one
+SELECT COUNT(*) FROM comments
+WHERE article_id = $1 AND parent_id IS NULL;

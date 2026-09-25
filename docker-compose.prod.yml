@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: myblogspot_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: myblogspot
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: myblogspot_prod
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    command:
+      - "-c"
+      - "max_connections=10"
+      - "-c"
+      - "shared_buffers=16MB"
+      - "-c"
+      - "work_mem=1MB"
+    # Do NOT expose port 5432 to public internet for security
+
+  backend:
+    image: ${ECR_REGISTRY}/myblogspot-backend:latest
+    container_name: myblogspot_backend
+    restart: always
+    ports:
+      - "127.0.0.1:8080:8080" # Bind strictly to localhost
+    environment:
+      PORT: "8080"
+      ENV: production
+      BASE_URL: https://gryffin-uit.site
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: myblogspot_prod
+      DB_USER: myblogspot
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_SSLMODE: disable
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: "3600"
+      CORS_ALLOWED_ORIGINS: https://gryffin-uit.site
+      RATE_LIMIT_REQUESTS: "100"
+      RATE_LIMIT_WINDOW: "60"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_prod_data:
