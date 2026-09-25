@@ -62,10 +62,10 @@ jobs:
           sarif_file: 'trivy-fs-results.sarif'
 
   # ============================================================================
-  # 2. BACKEND QUALITY GATE: Go Linting, Formatting & Unit Tests
+  # 2. BACKEND UNIT TESTS: Go Linting, Formatting & Unit Tests with Race Detector
   # ============================================================================
   test-backend:
-    name: Test Backend (Go)
+    name: Test Backend Unit (Go 1.26)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -102,7 +102,49 @@ jobs:
           retention-days: 7
 
   # ============================================================================
-  # 3. FRONTEND QUALITY GATE: Next.js Type Check, Lint & Build
+  # 3. BACKEND INTEGRATION GATE: Integration Tests with Ephemeral PostgreSQL
+  # ============================================================================
+  test-integration:
+    name: Test Backend Integration (PostgreSQL)
+    runs-on: ubuntu-latest
+    needs: [test-backend]
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: myblogspot
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: myblogspot_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U myblogspot -d myblogspot_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'backend/go.mod'
+          cache: true
+          cache-dependency-path: 'backend/go.sum'
+
+      - name: Apply Database Schema Migration
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          PGPASSWORD=secret psql -h localhost -p 5432 -U myblogspot -d myblogspot_test -f backend/internal/db/schema.sql
+
+      - name: Run Backend Integration Tests
+        run: |
+          cd backend
+          go test -v -race ./tests/integration/...
+
+  # ============================================================================
+  # 4. FRONTEND QUALITY GATE: Next.js Type Check, Lint & Build
   # ============================================================================
   test-frontend:
     name: Test Frontend (Next.js 14)
@@ -143,14 +185,14 @@ jobs:
           npm run build
 
   # ============================================================================
-  # 4. CONTAINER VERIFICATION: Multi-Stage Build & Trivy Image Security Scan
+  # 5. CONTAINER VERIFICATION: Multi-Stage Build & Trivy Image Security Scan
   #    (Note: Container registry push & Cosign signing will be activated once
   #     registry repositories and credentials are provisioned in Step 2)
   # ============================================================================
   build-and-test-containers:
     name: Build & Verify Docker Images (Local Validation)
     runs-on: ubuntu-latest
-    needs: [security-sast, test-backend, test-frontend]
+    needs: [security-sast, test-backend, test-integration, test-frontend]
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout Code
