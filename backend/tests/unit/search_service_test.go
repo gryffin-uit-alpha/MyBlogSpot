@@ -4,9 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gryffin-uit-alpha/myblogspot/internal/db"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/service"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var searchService *service.SearchService
@@ -16,20 +14,7 @@ func setupSearchService(t *testing.T) {
 		return
 	}
 
-	ctx := context.Background()
-	dsn := "postgres://myblogspot:secret@localhost:5432/myblogspot_dev?sslmode=disable"
-
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatalf("Failed to connect to database: %v", err)
-	}
-
-	if err := pool.Ping(ctx); err != nil {
-		t.Fatalf("Failed to ping database: %v", err)
-	}
-
-	queries := db.New(pool)
-	searchService = service.NewSearchService(queries)
+	searchService = service.NewSearchService(testQueries)
 }
 
 func TestSearchService_SearchArticles_EmptyQuery(t *testing.T) {
