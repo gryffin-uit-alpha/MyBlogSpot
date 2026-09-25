@@ -162,25 +162,47 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.7 }}
-          className="flex flex-col items-center gap-8 pt-8"
+          className="flex flex-col items-center gap-5 pt-8"
         >
+          {/* Start reading indicator pointing DOWN into Explore button */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.9, duration: 0.5 }}
+            className="flex flex-col items-center gap-1.5"
+          >
+            <span className="text-gray-400 text-xs font-mono tracking-wider uppercase flex items-center gap-1.5">
+              <span className="text-cyan-400">{'//'}</span> Start reading
+            </span>
+            <motion.div
+              animate={{ y: [0, 5, 0] }}
+              transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
+              className="text-cyan-400"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              </svg>
+            </motion.div>
+          </motion.div>
+
           {/* Main CTA Button */}
           {!loading && settings && (
             <Link
               href={settings.hero_cta_link || '/articles'}
               className="group relative"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-lg blur-xl opacity-30 group-hover:opacity-50 transition-opacity"></div>
-              <div className="relative px-10 py-5 bg-[#111827] border-2 border-cyan-500/30 hover:border-cyan-400/60 rounded-lg font-mono text-lg font-semibold text-cyan-400 transition-all group-hover:scale-105">
+              <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-lg blur-xl opacity-30 group-hover:opacity-60 transition-opacity"></div>
+              <div className="relative px-10 py-5 bg-[#111827] border-2 border-cyan-500/40 hover:border-cyan-400 rounded-lg font-mono text-lg font-semibold text-cyan-400 transition-all group-hover:scale-105 shadow-lg shadow-cyan-950/40">
                 <span className="flex items-center gap-3">
-                  <span className="text-gray-600">[</span>
+                  <span className="text-gray-500">[</span>
                   <span className="group-hover:text-cyan-300 transition-colors">
                     {settings.hero_cta_text || 'Explore'}
                   </span>
-                  <span className="text-gray-600">]</span>
+                  <span className="text-gray-500">]</span>
                   <motion.span
                     animate={{ x: [0, 5, 0] }}
                     transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
+                    className="text-cyan-300"
                   >
                     →
                   </motion.span>
@@ -189,39 +211,76 @@ export default function Home() {
             </Link>
           )}
 
-          {/* Scroll Indicator - Points to button above */}
+          {/* Hotkey Hint below Button */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.0, duration: 0.6 }}
-            className="flex flex-col items-center gap-3"
+            transition={{ delay: 1.1, duration: 0.5 }}
+            className="text-gray-500 text-xs font-mono flex items-center gap-2 pt-2"
           >
-            <motion.div
-              animate={{ y: [0, 8, 0] }}
-              transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-              className="text-gray-600 text-xs font-mono flex flex-col items-center gap-2"
-            >
-              <span>Start reading</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-              </svg>
-            </motion.div>
-
-            {/* Now Playing Widget - Below scroll indicator */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1.3, duration: 0.5 }}
-              className="mt-4"
-            >
-              <div className="flex items-center gap-2 px-4 py-2 bg-purple-500/5 border border-purple-500/20 rounded-md font-mono text-xs text-purple-400">
-                <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                <span>♪ Now Playing: Lofi Hip Hop Radio</span>
-              </div>
-            </motion.div>
+            <span>Press</span>
+            <kbd className="px-1.5 py-0.5 bg-gray-900 border border-gray-700/80 rounded text-[11px] text-cyan-400 font-mono">
+              /
+            </kbd>
+            <span>to search</span>
+            <span className="text-gray-700">•</span>
+            <kbd className="px-1.5 py-0.5 bg-gray-900 border border-gray-700/80 rounded text-[11px] text-cyan-400 font-mono">
+              [&gt;_]
+            </kbd>
+            <span>for terminal</span>
           </motion.div>
         </motion.div>
       </div>
+
+      {/* Floating Cyber Audio Pill (Now Playing Widget) */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.2, duration: 0.6 }}
+        className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40 group select-none"
+      >
+        <div className="relative flex items-center gap-3 px-4 py-2.5 bg-[#0B0F19]/85 backdrop-blur-xl border border-purple-500/30 hover:border-purple-400/60 rounded-full shadow-lg shadow-purple-950/40 transition-all hover:scale-105">
+          {/* Animated Equalizer Waveform Bars */}
+          <div className="flex items-end gap-0.5 h-3.5 w-3.5">
+            <motion.span
+              animate={{ height: ['30%', '100%', '40%', '80%', '30%'] }}
+              transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
+              className="w-0.5 bg-purple-400 rounded-full"
+            />
+            <motion.span
+              animate={{ height: ['80%', '30%', '90%', '40%', '80%'] }}
+              transition={{ repeat: Infinity, duration: 0.9, ease: 'easeInOut' }}
+              className="w-0.5 bg-cyan-400 rounded-full"
+            />
+            <motion.span
+              animate={{ height: ['40%', '90%', '20%', '100%', '40%'] }}
+              transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
+              className="w-0.5 bg-purple-400 rounded-full"
+            />
+            <motion.span
+              animate={{ height: ['100%', '40%', '70%', '30%', '100%'] }}
+              transition={{ repeat: Infinity, duration: 1.1, ease: 'easeInOut' }}
+              className="w-0.5 bg-cyan-300 rounded-full"
+            />
+          </div>
+
+          {/* Pulse LED indicator */}
+          <div className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+          </div>
+
+          {/* Track Text */}
+          <div className="flex flex-col">
+            <span className="font-mono text-[11px] text-purple-300 font-medium tracking-tight">
+              ♪ Lofi Hip Hop Radio
+            </span>
+            <span className="font-mono text-[9px] text-gray-500 group-hover:text-gray-400 transition-colors">
+              Ambient Stream • D Minor
+            </span>
+          </div>
+        </div>
+      </motion.div>
 
       <style jsx>{`
         @keyframes pulse-slow {
@@ -233,5 +292,6 @@ export default function Home() {
         }
       `}</style>
     </div>
+
   );
 }
