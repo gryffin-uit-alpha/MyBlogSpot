@@ -264,3 +264,81 @@ jobs:
           echo "Tagging and pushing frontend image -> ${TARGET_IMAGE}"
           docker tag myblogspot-frontend:test "${TARGET_IMAGE}"
           docker push "${TARGET_IMAGE}"
+
+  # ============================================================================
+  # 5. GITOPS CONTINUOUS DELIVERY: Update Image Tag in myblogspot-cd
+  # Ref: Knowledge_Base/CI_CD.md & GitOps Pattern
+  # Automatically triggers ArgoCD reconciliation by updating Helm values
+  # ============================================================================
+  gitops-cd-trigger:
+    name: GitOps Trigger (Update Image Tag in CD Repo)
+    runs-on: ubuntu-latest
+    needs: [build-and-publish-containers]
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging') && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    steps:
+      - name: Verify CD Auth Configuration
+        id: check-auth
+        run: |
+          if [ -n "${{ secrets.GITOPS_PAT }}" ]; then
+            echo "auth_type=pat" >> "$GITHUB_OUTPUT"
+            echo "✅ GITOPS_PAT token detected."
+          elif [ -n "${{ secrets.CD_DEPLOY_KEY }}" ]; then
+            echo "auth_type=deploy_key" >> "$GITHUB_OUTPUT"
+            echo "✅ CD_DEPLOY_KEY SSH key detected."
+          else
+            echo "auth_type=none" >> "$GITHUB_OUTPUT"
+            echo "::warning ::Neither GITOPS_PAT nor CD_DEPLOY_KEY is configured in GitHub Secrets. Automated GitOps push will be skipped."
+          fi
+
+      # Option 1: Checkout using PAT
+      - name: Checkout CD Repository (via PAT)
+        if: steps.check-auth.outputs.auth_type == 'pat'
+        uses: actions/checkout@v4
+        with:
+          repository: 'gryffin-uit-alpha/myblogspot-cd'
+          token: ${{ secrets.GITOPS_PAT }}
+          ref: 'main'
+          path: 'myblogspot-cd'
+
+      # Option 2: Checkout using SSH Deploy Key
+      - name: Checkout CD Repository (via Deploy Key)
+        if: steps.check-auth.outputs.auth_type == 'deploy_key'
+        uses: actions/checkout@v4
+        with:
+          repository: 'gryffin-uit-alpha/myblogspot-cd'
+          ssh-key: ${{ secrets.CD_DEPLOY_KEY }}
+          ref: 'main'
+          path: 'myblogspot-cd'
+
+      # Update YAML using yq
+      - name: Update Staging Image Tag
+        if: steps.check-auth.outputs.auth_type != 'none'
+        run: |
+          cd myblogspot-cd
+          IMAGE_TAG="${{ github.sha }}"
+          VALUES_FILE="helm/myblogspot/values-staging.yaml"
+
+          echo "Updating $VALUES_FILE with image tag: $IMAGE_TAG"
+          yq eval ".backend.image.tag = \"${IMAGE_TAG}\"" -i "$VALUES_FILE"
+          yq eval ".frontend.image.tag = \"${IMAGE_TAG}\"" -i "$VALUES_FILE"
+
+          echo "=== Diff Preview ==="
+          git diff "$VALUES_FILE"
+
+      - name: Commit and Push Image Tag Update
+        if: steps.check-auth.outputs.auth_type != 'none'
+        run: |
+          cd myblogspot-cd
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          VALUES_FILE="helm/myblogspot/values-staging.yaml"
+          git add "$VALUES_FILE"
+
+          if git diff --staged --quiet; then
+            echo "No changes detected. Skipping commit."
+          else
+            git commit -m "chore(cd): update staging image tag to ${{ github.sha }} [skip ci]"
+            git push origin main
+            echo "🚀 Successfully updated myblogspot-cd with tag: ${{ github.sha }}"
+          fi
