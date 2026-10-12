@@ -268,7 +268,7 @@ jobs:
   # ============================================================================
   # 5. GITOPS CONTINUOUS DELIVERY: Update Image Tag in myblogspot-cd
   # Ref: Knowledge_Base/CI_CD.md & GitOps Pattern
-  # Automatically triggers ArgoCD reconciliation by updating Helm values
+  # Authenticates via GitHub App & AWS Secrets Manager (Sydney ap-southeast-2)
   # ============================================================================
   gitops-cd-trigger:
     name: GitOps Trigger (Update Image Tag in CD Repo)
@@ -276,43 +276,38 @@ jobs:
     needs: [build-and-publish-containers]
     if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging') && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     steps:
-      - name: Verify CD Auth Configuration
-        id: check-auth
-        run: |
-          if [ -n "${{ secrets.GITOPS_PAT }}" ]; then
-            echo "auth_type=pat" >> "$GITHUB_OUTPUT"
-            echo "✅ GITOPS_PAT token detected."
-          elif [ -n "${{ secrets.CD_DEPLOY_KEY }}" ]; then
-            echo "auth_type=deploy_key" >> "$GITHUB_OUTPUT"
-            echo "✅ CD_DEPLOY_KEY SSH key detected."
-          else
-            echo "auth_type=none" >> "$GITHUB_OUTPUT"
-            echo "::warning ::Neither GITOPS_PAT nor CD_DEPLOY_KEY is configured in GitHub Secrets. Automated GitOps push will be skipped."
-          fi
+      - name: Configure AWS Credentials (OIDC Keyless Sydney)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
 
-      # Option 1: Checkout using PAT
-      - name: Checkout CD Repository (via PAT)
-        if: steps.check-auth.outputs.auth_type == 'pat'
+      - name: Fetch GitHub App Key from AWS Secrets Manager (Sydney)
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
+        with:
+          secret-ids: |
+            GITHUB_APP_KEY, staging/github-app-key
+          parse-json-secrets: false
+
+      - name: Generate Short-lived GitHub App Installation Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GITOPS_APP_ID }}
+          private-key: ${{ env.GITHUB_APP_KEY }}
+          owner: gryffin-uit-alpha
+          repositories: myblogspot-cd
+
+      - name: Checkout CD Repository
         uses: actions/checkout@v4
         with:
           repository: 'gryffin-uit-alpha/myblogspot-cd'
-          token: ${{ secrets.GITOPS_PAT }}
+          token: ${{ steps.app-token.outputs.token }}
           ref: 'main'
           path: 'myblogspot-cd'
 
-      # Option 2: Checkout using SSH Deploy Key
-      - name: Checkout CD Repository (via Deploy Key)
-        if: steps.check-auth.outputs.auth_type == 'deploy_key'
-        uses: actions/checkout@v4
-        with:
-          repository: 'gryffin-uit-alpha/myblogspot-cd'
-          ssh-key: ${{ secrets.CD_DEPLOY_KEY }}
-          ref: 'main'
-          path: 'myblogspot-cd'
-
-      # Update YAML using yq
       - name: Update Staging Image Tag
-        if: steps.check-auth.outputs.auth_type != 'none'
         run: |
           cd myblogspot-cd
           IMAGE_TAG="${{ github.sha }}"
@@ -326,7 +321,6 @@ jobs:
           git diff "$VALUES_FILE"
 
       - name: Commit and Push Image Tag Update
-        if: steps.check-auth.outputs.auth_type != 'none'
         run: |
           cd myblogspot-cd
           git config user.name "github-actions[bot]"
