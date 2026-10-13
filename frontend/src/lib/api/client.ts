@@ -1,8 +1,11 @@
 function getBaseUrl(): string {
+  let base = '';
   if (typeof window === 'undefined') {
-    return (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://backend:8080').replace(/\/+$/, '');
+    base = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://myblogspot-staging-backend:8080';
+  } else {
+    base = process.env.NEXT_PUBLIC_API_URL || '';
   }
-  return (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+  return base.replace(/\/+$/, '').replace(/\/api(\/v1)?$/, '');
 }
 
 export async function apiClient<T>(
@@ -11,7 +14,11 @@ export async function apiClient<T>(
 ): Promise<T> {
   const baseUrl = getBaseUrl();
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  const url = `${baseUrl}${cleanEndpoint}`;
+  // Ensure endpoint routes under /api/v1 for reverse proxy/ALB compatibility
+  const normalizedEndpoint = cleanEndpoint.startsWith('/api/v1') 
+    ? cleanEndpoint 
+    : `/api/v1${cleanEndpoint}`;
+  const url = `${baseUrl}${normalizedEndpoint}`;
 
   // Get token from localStorage if available
   const token = typeof window !== 'undefined'
@@ -19,12 +26,16 @@ export async function apiClient<T>(
     : null;
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...options?.headers as Record<string, string>,
   };
 
+  // Only set Content-Type to application/json if not already set and body is not FormData
+  if (!(options?.body instanceof FormData) && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   // Add Authorization header if token exists
-  if (token) {
+  if (token && !headers['Authorization']) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
@@ -33,18 +44,18 @@ export async function apiClient<T>(
     ...options,
     credentials: 'include',
     headers,
-  })
+  });
 
   if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error?.message || 'API request failed')
+    const error = await response.json();
+    throw new Error(error.error?.message || 'API request failed');
   }
 
   if (response.status === 204) {
-    return {} as T
+    return {} as T;
   }
 
-  return response.json()
+  return response.json();
 }
 
 export const api = {
@@ -56,35 +67,12 @@ export const api = {
 
   post: async <T = any>(endpoint: string, data?: any, config?: { headers?: Record<string, string> }) => {
     const isFormData = data instanceof FormData;
-    const headers: Record<string, string> = {};
-
-    const token = typeof window !== 'undefined' ? localStorage.getItem('myblogspot_admin_token') : null;
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    if (!isFormData) {
-      headers['Content-Type'] = 'application/json';
-    }
-
-    if (config?.headers) {
-      Object.assign(headers, config.headers);
-    }
-
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}${endpoint}`, {
+    const response = await apiClient<T>(endpoint, {
       method: 'POST',
-      headers: isFormData ? (headers['Authorization'] ? { 'Authorization': headers['Authorization'] } : {}) : headers,
+      headers: isFormData ? config?.headers : { 'Content-Type': 'application/json', ...config?.headers },
       body: isFormData ? data : JSON.stringify(data),
-      credentials: 'include',
     });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || 'API request failed');
-    }
-
-    const result = await response.json();
-    return { data: result };
+    return { data: response };
   },
 
   put: async <T = any>(endpoint: string, data?: any) => {
