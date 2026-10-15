@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -23,15 +24,17 @@ import (
 func main() {
 	cfg := config.Load()
 
-	// Initialize database connection
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		cfg.Database.User,
-		cfg.Database.Password,
-		cfg.Database.Host,
-		cfg.Database.Port,
-		cfg.Database.Name,
-		cfg.Database.SSLMode,
-	)
+	// Initialize database connection with RFC 3986 URL encoding
+	u := &url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(cfg.Database.User, cfg.Database.Password),
+		Host:   fmt.Sprintf("%s:%s", cfg.Database.Host, cfg.Database.Port),
+		Path:   cfg.Database.Name,
+	}
+	q := u.Query()
+	q.Set("sslmode", cfg.Database.SSLMode)
+	u.RawQuery = q.Encode()
+	dsn := u.String()
 
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, dsn)
