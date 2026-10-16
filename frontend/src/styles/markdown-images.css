@@ -1,23 +1,64 @@
 /* Markdown Image Utilities */
 
-/* Size variants */
+/*
+ * Article content container: `display: flow-root` makes the box contain
+ * floated images (img-left / img-right) so they can never spill out of
+ * the article card, even when the following text is short.
+ */
+.article-content {
+  display: flow-root;
+  overflow-wrap: anywhere;
+}
+
+/* Every image inside an article is responsive by default */
+.article-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+/* Plain Markdown images ![alt](url) render as centered blocks */
+.article-content .md-figure {
+  display: block;
+  margin: 1.5rem auto;
+  text-align: center;
+}
+
+.article-content .md-figure img {
+  display: block;
+  margin: 0 auto;
+}
+
+.article-content .md-figure-caption {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #9CA3AF;
+  font-style: italic;
+}
+
+/* Size variants: width target, but never wider than the container */
 .img-small {
-  max-width: 300px;
+  width: min(300px, 100%);
+  max-width: 100%;
   height: auto;
 }
 
 .img-medium {
-  max-width: 600px;
+  width: min(600px, 100%);
+  max-width: 100%;
   height: auto;
 }
 
 .img-large {
-  max-width: 900px;
+  width: min(900px, 100%);
+  max-width: 100%;
   height: auto;
 }
 
 .img-full {
   width: 100%;
+  max-width: 100%;
   height: auto;
 }
 
@@ -30,14 +71,38 @@
 
 .img-left {
   float: left;
-  margin-right: 1.5rem;
-  margin-bottom: 1rem;
+  margin: 0.25rem 1.5rem 1rem 0;
 }
 
 .img-right {
   float: right;
-  margin-left: 1.5rem;
-  margin-bottom: 1rem;
+  margin: 0.25rem 0 1rem 1.5rem;
+}
+
+/* Floated images never take more than ~45% of the line next to text */
+.img-left.img-small,
+.img-right.img-small {
+  width: min(300px, 45%);
+}
+
+/* On narrow screens floats become centered full-width blocks */
+@media (max-width: 640px) {
+  .img-left,
+  .img-right {
+    float: none;
+    display: block;
+    margin: 1rem auto;
+  }
+
+  .img-left.img-small,
+  .img-right.img-small {
+    width: min(300px, 100%);
+  }
+}
+
+/* Utility to stop text wrapping around a floated image */
+.clear-float {
+  clear: both;
 }
 
 /* Responsive by default */
@@ -52,6 +117,8 @@
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
+  margin: 1.5rem auto;
+  max-width: 100%;
 }
 
 .img-caption {

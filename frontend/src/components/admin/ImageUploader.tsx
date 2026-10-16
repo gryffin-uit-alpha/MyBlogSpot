@@ -24,21 +24,21 @@ interface ImageUploaderProps {
 const FOLDERS = ['articles', 'general', 'homepage'] as const;
 
 const imageTemplates = [
-  { label: 'Default Markdown', value: (url: string, alt: string) => `![${alt}](${url})` },
-  { label: 'Medium Center', value: (url: string, alt: string) => `<img src="${url}" alt="${alt}" class="img-medium img-center img-rounded" />` },
+  { label: 'Centered (auto fit)', value: (url: string, alt: string) => `![${alt}](${url})` },
+  { label: 'Medium Center (600px)', value: (url: string, alt: string) => `<img src="${url}" alt="${alt}" class="img-medium img-center img-rounded" />` },
   { label: 'Full Width', value: (url: string, alt: string) => `<img src="${url}" alt="${alt}" class="img-full img-rounded" />` },
-  { label: 'Small Left', value: (url: string, alt: string) => `<img src="${url}" alt="${alt}" class="img-small img-left img-rounded" />` },
-  { label: 'Small Right', value: (url: string, alt: string) => `<img src="${url}" alt="${alt}" class="img-small img-right img-rounded" />` },
   { label: 'With Caption', value: (url: string, alt: string) => `<div class="img-with-caption">\n  <img src="${url}" alt="${alt}" class="img-medium img-rounded img-shadow" />\n  <span class="img-caption">${alt}</span>\n</div>` },
+  { label: 'Small Left (text wraps right)', value: (url: string, alt: string) => `<img src="${url}" alt="${alt}" class="img-small img-left img-rounded" />` },
+  { label: 'Small Right (text wraps left)', value: (url: string, alt: string) => `<img src="${url}" alt="${alt}" class="img-small img-right img-rounded" />` },
+  { label: 'Stop text wrap (clear float)', value: () => `<div class="clear-float"></div>` },
 ];
 
 export function getImageAltText(image: UploadedImage): string {
   const rawAlt = typeof image.alt_text === 'string' ? image.alt_text.trim() : '';
   if (rawAlt) return rawAlt;
-  if (image.original_filename && image.original_filename.trim()) {
-    return image.original_filename.trim();
-  }
-  return image.filename;
+  const name = (image.original_filename || '').trim() || image.filename;
+  // Drop extension for a cleaner alt text: "diagram.png" -> "diagram"
+  return name.replace(/\.[a-z0-9]+$/i, '') || name;
 }
 
 export function buildImageMarkdown(image: UploadedImage): string {
@@ -212,7 +212,8 @@ export default function ImageUploader({
   const handleInsertMarkdown = (image: UploadedImage, customOutput?: string) => {
     const output = customOutput || buildImageMarkdown(image);
     if (onInsertMarkdown) {
-      onInsertMarkdown(output);
+      // Always insert as its own block so Markdown/HTML renders it on a separate line
+      onInsertMarkdown(`\n\n${output}\n\n`);
       setInsertedId(image.id);
       setTimeout(() => setInsertedId((prev) => (prev === image.id ? null : prev)), 2000);
     } else {
