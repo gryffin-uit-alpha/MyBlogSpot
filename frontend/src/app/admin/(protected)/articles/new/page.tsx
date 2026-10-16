@@ -46,16 +46,22 @@ export default function NewArticlePage() {
     fetchOptions();
   }, []);
 
-  // Auto-generate slug from title
+  // Auto-generate slug from title (with Vietnamese diacritics support)
   const handleTitleChange = (title: string) => {
-    setFormData({
-      ...formData,
+    const slug = title
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    setFormData((prev) => ({
+      ...prev,
       title,
-      slug: title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, ''),
-    });
+      slug,
+    }));
   };
 
   const handleTagToggle = (tagId: string) => {

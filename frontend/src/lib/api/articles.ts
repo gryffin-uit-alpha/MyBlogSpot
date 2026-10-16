@@ -84,9 +84,14 @@ export const articlesApi = {
    * Create new article
    */
   create: async (data: CreateArticleData): Promise<Article> => {
+    const payload = {
+      ...data,
+      category_id: data.category_id && data.category_id.trim() !== '' ? data.category_id.trim() : undefined,
+      tag_ids: Array.isArray(data.tag_ids) ? data.tag_ids.filter((id) => id && id.trim() !== '') : [],
+    };
     const response = await apiClient<ApiResponse<Article>>('/admin/articles', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
     return response.data!;
   },
@@ -95,9 +100,14 @@ export const articlesApi = {
    * Update existing article
    */
   update: async (id: string, data: UpdateArticleData): Promise<Article> => {
+    const payload = {
+      ...data,
+      category_id: data.category_id && data.category_id.trim() !== '' ? data.category_id.trim() : undefined,
+      tag_ids: Array.isArray(data.tag_ids) ? data.tag_ids.filter((tagId) => tagId && tagId.trim() !== '') : undefined,
+    };
     const response = await apiClient<ApiResponse<Article>>(`/admin/articles/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
     return response.data!;
   },
