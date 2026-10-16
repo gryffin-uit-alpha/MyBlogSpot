@@ -8,7 +8,7 @@ import { tagsApi } from '@/lib/api/tags';
 import type { Category } from '@/types/category';
 import type { Tag } from '@/types/tag';
 import ImageUploader from '@/components/admin/ImageUploader';
-import { ArticleContent } from '@/components/article/ArticleContent';
+import ArticleLivePreview, { type EditorViewMode } from '@/components/admin/ArticleLivePreview';
 
 export default function EditArticlePage() {
   const router = useRouter();
@@ -19,7 +19,7 @@ export default function EditArticlePage() {
   const [isFetching, setIsFetching] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
-  const [previewMode, setPreviewMode] = useState(false);
+  const [viewMode, setViewMode] = useState<EditorViewMode>('split');
   const [showImageUploader, setShowImageUploader] = useState(false);
   const contentRef = useRef<HTMLTextAreaElement>(null);
 
@@ -65,12 +65,12 @@ export default function EditArticlePage() {
   }, [articleId]);
 
   const handleTagToggle = (tagId: string) => {
-    setFormData({
-      ...formData,
-      tag_ids: formData.tag_ids.includes(tagId)
-        ? formData.tag_ids.filter((id) => id !== tagId)
-        : [...formData.tag_ids, tagId],
-    });
+    setFormData((prev) => ({
+      ...prev,
+      tag_ids: prev.tag_ids.includes(tagId)
+        ? prev.tag_ids.filter((id) => id !== tagId)
+        : [...prev.tag_ids, tagId],
+    }));
   };
 
   const handleSubmit = async (e: FormEvent, status: 'draft' | 'published') => {
@@ -125,230 +125,246 @@ export default function EditArticlePage() {
     );
   }
 
+  const selectedCategory = categories.find((cat) => cat.id === formData.category_id);
+  const selectedTags = tags.filter((tag) => formData.tag_ids.includes(tag.id));
+
   return (
-    <div className="max-w-5xl">
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2 font-mono text-xs text-gray-600">
-          <span className="text-cyan-400">&gt;</span>
-          <span>EDIT_ARTICLE</span>
+    <div className="w-full">
+      {/* Top Header + View Mode Switcher */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div>
+          <div className="flex items-center gap-3 mb-2 font-mono text-xs text-gray-600">
+            <span className="text-cyan-400">&gt;</span>
+            <span>EDIT_ARTICLE</span>
+          </div>
+          <h1 className="heading-1 text-gray-100 mb-1">Edit Article</h1>
+          <p className="text-gray-500 text-sm">Update your blog post with real-time live preview</p>
         </div>
-        <h1 className="heading-1 text-gray-100 mb-2">Edit Article</h1>
-        <p className="text-gray-500">Update your blog post</p>
+
+        {/* View Mode Switcher */}
+        <div className="flex items-center gap-1.5 p-1 bg-[#111827] border border-gray-800 rounded-lg">
+          <button
+            type="button"
+            onClick={() => setViewMode('split')}
+            className={`px-3 py-1.5 rounded-md font-mono text-xs transition-all ${
+              viewMode === 'split'
+                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 font-semibold'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            ◫ Split (Live)
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('editor')}
+            className={`px-3 py-1.5 rounded-md font-mono text-xs transition-all ${
+              viewMode === 'editor'
+                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 font-semibold'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            ✎ Editor Only
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('preview')}
+            className={`px-3 py-1.5 rounded-md font-mono text-xs transition-all ${
+              viewMode === 'preview'
+                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 font-semibold'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            👁 Full Preview
+          </button>
+        </div>
       </div>
 
-      <form className="space-y-6">
-        {/* Title */}
-        <div>
-          <label htmlFor="title" className="block text-sm font-mono text-gray-400 mb-2">
-            <span className="text-gray-700">&gt;</span> title *
-          </label>
-          <input
-            id="title"
-            type="text"
-            value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            required
-            className="w-full px-4 py-3 bg-[#111827] border border-gray-800 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-100 font-mono text-sm"
-            placeholder="Enter article title"
-          />
-        </div>
-
-        {/* Slug */}
-        <div>
-          <label htmlFor="slug" className="block text-sm font-mono text-gray-400 mb-2">
-            <span className="text-gray-700">&gt;</span> slug *
-          </label>
-          <input
-            id="slug"
-            type="text"
-            value={formData.slug}
-            onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-            required
-            className="w-full px-4 py-3 bg-[#111827] border border-gray-800 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-100 font-mono text-sm"
-            placeholder="article-url-slug"
-          />
-          <p className="mt-1 text-xs font-mono text-gray-600">URL: /articles/{formData.slug}</p>
-        </div>
-
-        {/* Summary */}
-        <div>
-          <label htmlFor="summary" className="block text-sm font-mono text-gray-400 mb-2">
-            <span className="text-gray-700">&gt;</span> summary *
-          </label>
-          <textarea
-            id="summary"
-            value={formData.summary}
-            onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
-            required
-            rows={3}
-            className="w-full px-4 py-3 bg-[#111827] border border-gray-800 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-100 font-mono text-sm"
-            placeholder="Brief summary of the article"
-          />
-        </div>
-
-        {/* Category */}
-        <div>
-          <label htmlFor="category" className="block text-sm font-mono text-gray-400 mb-2">
-            <span className="text-gray-700">&gt;</span> category *
-          </label>
-          <select
-            id="category"
-            value={formData.category_id}
-            onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-            required
-            className="w-full px-4 py-3 bg-[#111827] border border-gray-800 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-100 font-mono text-sm"
-          >
-            <option value="">Select a category</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Tags */}
-        <div>
-          <label className="block text-sm font-mono text-gray-400 mb-2">
-            <span className="text-gray-700">&gt;</span> tags
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {tags.map((tag) => (
-              <button
-                key={tag.id}
-                type="button"
-                onClick={() => handleTagToggle(tag.id)}
-                className={`px-3 py-1 text-sm rounded font-mono transition-colors ${
-                  formData.tag_ids.includes(tag.id)
-                    ? 'bg-cyan-500/20 border border-cyan-500/50 text-cyan-400'
-                    : 'bg-gray-800 border border-gray-700 text-gray-400 hover:border-gray-600'
-                }`}
-              >
-                {tag.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Content */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label htmlFor="content" className="block text-sm font-mono text-gray-400">
-              <span className="text-gray-700">&gt;</span> content * (Markdown)
-            </label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setShowImageUploader(!showImageUploader)}
-                className="text-sm text-cyan-400 hover:text-cyan-300 font-mono"
-              >
-                {showImageUploader ? 'Hide Images' : '+ Add Images'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreviewMode(!previewMode)}
-                className="text-sm text-cyan-400 hover:text-cyan-300 font-mono"
-              >
-                {previewMode ? 'Edit' : 'Preview'}
-              </button>
-            </div>
-          </div>
-
-          {showImageUploader && (
-            <div className="mb-4 p-4 bg-[#0B0F19] border border-gray-800 rounded-lg">
-              <ImageUploader
-                folder="articles"
-                onInsertMarkdown={(markdown) => {
-                  insertMarkdown(markdown);
-                }}
+      {/* Main Grid: Editor Left + Live Preview Right */}
+      <div
+        className={
+          viewMode === 'split'
+            ? 'grid grid-cols-1 xl:grid-cols-2 gap-6 items-start'
+            : 'max-w-5xl'
+        }
+      >
+        {/* Left Pane: Article Editor Form */}
+        {viewMode !== 'preview' && (
+          <form className="space-y-6 bg-[#111827]/40 border border-gray-800/80 rounded-xl p-6">
+            {/* Title */}
+            <div>
+              <label htmlFor="title" className="block text-sm font-mono text-gray-400 mb-2">
+                <span className="text-gray-700">&gt;</span> title *
+              </label>
+              <input
+                id="title"
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                required
+                className="w-full px-4 py-3 bg-[#111827] border border-gray-800 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-100 font-mono text-sm"
+                placeholder="Enter article title"
               />
             </div>
-          )}
 
-          <textarea
-            ref={contentRef}
-            id="content"
-            value={formData.content}
-            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-            required
-            rows={20}
-            className="w-full px-4 py-3 bg-[#111827] border border-gray-800 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-100 font-mono text-sm"
-            placeholder="Write your article content in markdown..."
-          />
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-4 pt-4">
-          <button
-            type="button"
-            onClick={(e) => handleSubmit(e, 'published')}
-            disabled={isLoading}
-            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg font-mono text-sm font-semibold hover:shadow-lg disabled:opacity-50 transition-all"
-          >
-            {isLoading ? 'Updating...' : 'Update & Publish'}
-          </button>
-          <button
-            type="button"
-            onClick={(e) => handleSubmit(e, 'draft')}
-            disabled={isLoading}
-            className="px-6 py-3 bg-gray-800 border border-gray-700 text-gray-300 rounded-lg font-mono text-sm hover:bg-gray-700 disabled:opacity-50 transition-all"
-          >
-            {isLoading ? 'Saving...' : 'Save as Draft'}
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push('/admin/articles')}
-            className="px-6 py-3 bg-transparent border border-gray-800 text-gray-400 rounded-lg font-mono text-sm hover:border-gray-700 transition-all"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
-
-      {/* Preview Modal */}
-      {previewMode && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0B0F19] border border-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-800">
+            {/* Slug & Category in 2 Columns */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-xs font-mono rounded">
-                    PREVIEW MODE
-                  </span>
-                </div>
-                <h2 className="text-2xl font-bold text-gray-100">{formData.title || 'Untitled Article'}</h2>
+                <label htmlFor="slug" className="block text-sm font-mono text-gray-400 mb-2">
+                  <span className="text-gray-700">&gt;</span> slug *
+                </label>
+                <input
+                  id="slug"
+                  type="text"
+                  value={formData.slug}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  required
+                  className="w-full px-4 py-3 bg-[#111827] border border-gray-800 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-100 font-mono text-sm"
+                  placeholder="article-url-slug"
+                />
+                <p className="mt-1 text-xs font-mono text-gray-600">URL: /articles/{formData.slug}</p>
               </div>
-              <button
-                onClick={() => setPreviewMode(false)}
-                className="text-gray-400 hover:text-gray-200 text-2xl"
-              >
-                ×
-              </button>
+
+              <div>
+                <label htmlFor="category" className="block text-sm font-mono text-gray-400 mb-2">
+                  <span className="text-gray-700">&gt;</span> category
+                </label>
+                <select
+                  id="category"
+                  value={formData.category_id}
+                  onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                  className="w-full px-4 py-3 bg-[#111827] border border-gray-800 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-100 font-mono text-sm"
+                >
+                  <option value="">Select a category (optional)</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Summary */}
+            <div>
+              <label htmlFor="summary" className="block text-sm font-mono text-gray-400 mb-2">
+                <span className="text-gray-700">&gt;</span> summary
+              </label>
+              <textarea
+                id="summary"
+                value={formData.summary}
+                onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
+                rows={2}
+                className="w-full px-4 py-3 bg-[#111827] border border-gray-800 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-100 font-mono text-sm"
+                placeholder="Brief summary of the article"
+              />
+            </div>
+
+            {/* Tags */}
+            <div>
+              <label className="block text-sm font-mono text-gray-400 mb-2">
+                <span className="text-gray-700">&gt;</span> tags
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => handleTagToggle(tag.id)}
+                    className={`px-3 py-1 text-sm rounded font-mono transition-colors ${
+                      formData.tag_ids.includes(tag.id)
+                        ? 'bg-cyan-500/20 border border-cyan-500/50 text-cyan-400'
+                        : 'bg-gray-800 border border-gray-700 text-gray-400 hover:border-gray-600'
+                    }`}
+                  >
+                    {tag.name}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {formData.summary && (
-                <p className="text-xl text-gray-400 mb-8 leading-relaxed">
-                  {formData.summary}
-                </p>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="content" className="block text-sm font-mono text-gray-400">
+                  <span className="text-gray-700">&gt;</span> content * (Markdown)
+                </label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowImageUploader(!showImageUploader)}
+                    className="px-3 py-1 bg-cyan-500/10 border border-cyan-500/30 rounded text-xs text-cyan-400 hover:bg-cyan-500/20 font-mono transition-colors"
+                  >
+                    {showImageUploader ? '✕ Hide Images' : '🖼️ + Add Images'}
+                  </button>
+                </div>
+              </div>
+
+              {showImageUploader && (
+                <div className="mb-4 p-4 bg-[#0B0F19] border border-gray-800 rounded-lg">
+                  <ImageUploader
+                    folder="articles"
+                    onInsertMarkdown={(markdown) => {
+                      insertMarkdown(markdown);
+                    }}
+                  />
+                </div>
               )}
-              <ArticleContent content={formData.content} />
+
+              <textarea
+                ref={contentRef}
+                id="content"
+                value={formData.content}
+                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                required
+                rows={22}
+                className="w-full px-4 py-3 bg-[#111827] border border-gray-800 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-100 font-mono text-sm leading-relaxed"
+                placeholder="Write your article content in markdown..."
+              />
             </div>
 
-            {/* Footer */}
-            <div className="p-6 border-t border-gray-800 flex justify-end">
+            {/* Actions */}
+            <div className="flex flex-wrap gap-4 pt-2">
               <button
-                onClick={() => setPreviewMode(false)}
-                className="px-6 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-mono text-sm transition-all"
+                type="button"
+                onClick={(e) => handleSubmit(e, 'published')}
+                disabled={isLoading}
+                className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg font-mono text-sm font-semibold hover:shadow-lg disabled:opacity-50 transition-all"
               >
-                Close Preview
+                {isLoading ? 'Updating...' : 'Update & Publish'}
+              </button>
+              <button
+                type="button"
+                onClick={(e) => handleSubmit(e, 'draft')}
+                disabled={isLoading}
+                className="px-6 py-3 bg-gray-800 border border-gray-700 text-gray-300 rounded-lg font-mono text-sm hover:bg-gray-700 disabled:opacity-50 transition-all"
+              >
+                {isLoading ? 'Saving...' : 'Save as Draft'}
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push('/admin/articles')}
+                className="px-6 py-3 bg-transparent border border-gray-800 text-gray-400 rounded-lg font-mono text-sm hover:border-gray-700 transition-all"
+              >
+                Cancel
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </form>
+        )}
+
+        {/* Right Pane: Real-Time Live Preview */}
+        {viewMode !== 'editor' && (
+          <ArticleLivePreview
+            title={formData.title}
+            slug={formData.slug}
+            summary={formData.summary}
+            content={formData.content}
+            category={selectedCategory}
+            selectedTags={selectedTags}
+            status={formData.status}
+            sticky={viewMode === 'split'}
+          />
+        )}
+      </div>
     </div>
   );
 }
