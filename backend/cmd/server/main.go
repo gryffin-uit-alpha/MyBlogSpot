@@ -114,9 +114,9 @@ func main() {
 	r.Get("/feed.xml", feedHandler.RSS)
 	r.Get("/sitemap.xml", sitemapHandler.Sitemap)
 
-	// Static file serving for uploads
-	fileServer := http.FileServer(http.Dir("./uploads"))
-	r.Handle("/uploads/*", http.StripPrefix("/uploads/", fileServer))
+	// Static file serving for uploads (S3 backed with local fallback)
+	r.Get("/uploads/*", imageService.ServeUploadHandler)
+	r.Head("/uploads/*", imageService.ServeUploadHandler)
 
 	// Register API routes for both /api/v1 and root / (ensures full frontend compatibility)
 	registerAPIRoutes := func(api chi.Router) {

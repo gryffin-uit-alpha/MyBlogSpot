@@ -1,15 +1,21 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/google/uuid"
 	"github.com/gryffin-uit-alpha/myblogspot/internal/db"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -19,14 +25,29 @@ type ImageService struct {
 	queries    *db.Queries
 	uploadPath string
 	baseURL    string
+	s3Client   *s3.Client
+	s3Bucket   string
 }
 
 func NewImageService(queries *db.Queries, uploadPath, baseURL string) *ImageService {
-	return &ImageService{
+	svc := &ImageService{
 		queries:    queries,
 		uploadPath: uploadPath,
 		baseURL:    baseURL,
+		s3Bucket:   os.Getenv("S3_BUCKET"),
 	}
+
+	if svc.s3Bucket != "" {
+		cfg, err := awsconfig.LoadDefaultConfig(context.Background())
+		if err != nil {
+			log.Printf("⚠️ Warning: failed to load AWS config for S3 (%s): %v", svc.s3Bucket, err)
+		} else {
+			svc.s3Client = s3.NewFromConfig(cfg)
+			log.Printf("☁️ S3 Image Storage enabled (Bucket: %s)", svc.s3Bucket)
+		}
+	}
+
+	return svc
 }
 
 type ImageUploadResult struct {
@@ -61,22 +82,33 @@ func (s *ImageService) UploadImage(ctx context.Context, file multipart.File, hea
 	}
 
 	filename := fmt.Sprintf("%d_%s%s", time.Now().Unix(), uuid.New().String()[:8], ext)
+	s3Key := fmt.Sprintf("%s/%s", folder, filename)
 
-	folderPath := filepath.Join(s.uploadPath, folder)
-	if err := os.MkdirAll(folderPath, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create folder: %w", err)
-	}
-
-	filePath := filepath.Join(folderPath, filename)
-	dst, err := os.Create(filePath)
+	data, err := io.ReadAll(file)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create file: %w", err)
+		return nil, fmt.Errorf("failed to read uploaded file: %w", err)
 	}
-	defer dst.Close()
+	size := int64(len(data))
 
-	size, err := io.Copy(dst, file)
-	if err != nil {
-		return nil, fmt.Errorf("failed to save file: %w", err)
+	if s.s3Client != nil && s.s3Bucket != "" {
+		_, err := s.s3Client.PutObject(ctx, &s3.PutObjectInput{
+			Bucket:      aws.String(s.s3Bucket),
+			Key:         aws.String(s3Key),
+			Body:        bytes.NewReader(data),
+			ContentType: aws.String(contentType),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to upload image to S3: %w", err)
+		}
+	} else {
+		folderPath := filepath.Join(s.uploadPath, folder)
+		if err := os.MkdirAll(folderPath, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create folder: %w", err)
+		}
+		filePath := filepath.Join(folderPath, filename)
+		if err := os.WriteFile(filePath, data, 0644); err != nil {
+			return nil, fmt.Errorf("failed to save file: %w", err)
+		}
 	}
 
 	url := fmt.Sprintf("%s/uploads/%s/%s", s.baseURL, folder, filename)
@@ -96,7 +128,14 @@ func (s *ImageService) UploadImage(ctx context.Context, file multipart.File, hea
 		MimeType:         contentType,
 	})
 	if err != nil {
-		os.Remove(filePath)
+		if s.s3Client != nil && s.s3Bucket != "" {
+			_, _ = s.s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
+				Bucket: aws.String(s.s3Bucket),
+				Key:    aws.String(s3Key),
+			})
+		} else {
+			os.Remove(filepath.Join(s.uploadPath, folder, filename))
+		}
 		return nil, fmt.Errorf("failed to save to database: %w", err)
 	}
 
@@ -107,6 +146,40 @@ func (s *ImageService) UploadImage(ctx context.Context, file multipart.File, hea
 		Folder:   image.Folder,
 		AltText:  altText,
 	}, nil
+}
+
+// ServeUploadHandler serves uploaded images from AWS S3 (or local fallback in dev)
+func (s *ImageService) ServeUploadHandler(w http.ResponseWriter, r *http.Request) {
+	relPath := strings.TrimPrefix(r.URL.Path, "/uploads/")
+	relPath = strings.TrimPrefix(relPath, "/")
+	if relPath == "" || strings.Contains(relPath, "..") {
+		http.NotFound(w, r)
+		return
+	}
+
+	if s.s3Client != nil && s.s3Bucket != "" {
+		out, err := s.s3Client.GetObject(r.Context(), &s3.GetObjectInput{
+			Bucket: aws.String(s.s3Bucket),
+			Key:    aws.String(relPath),
+		})
+		if err == nil {
+			defer out.Body.Close()
+			if out.ContentType != nil {
+				w.Header().Set("Content-Type", *out.ContentType)
+			}
+			if out.ContentLength != nil {
+				w.Header().Set("Content-Length", fmt.Sprintf("%d", *out.ContentLength))
+			}
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			w.WriteHeader(http.StatusOK)
+			_, _ = io.Copy(w, out.Body)
+			return
+		}
+	}
+
+	// Fallback to local filesystem if present
+	localFile := filepath.Join(s.uploadPath, filepath.FromSlash(relPath))
+	http.ServeFile(w, r, localFile)
 }
 
 func (s *ImageService) ListImages(ctx context.Context, folder *string, limit, offset int32) ([]db.Image, int64, error) {
@@ -145,9 +218,20 @@ func (s *ImageService) DeleteImage(ctx context.Context, idStr string) error {
 		return fmt.Errorf("image not found: %w", err)
 	}
 
-	filePath := filepath.Join(s.uploadPath, image.Folder, image.Filename)
-	if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to delete file: %w", err)
+	if s.s3Client != nil && s.s3Bucket != "" {
+		s3Key := fmt.Sprintf("%s/%s", image.Folder, image.Filename)
+		_, err := s.s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
+			Bucket: aws.String(s.s3Bucket),
+			Key:    aws.String(s3Key),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to delete file from S3: %w", err)
+		}
+	} else {
+		filePath := filepath.Join(s.uploadPath, image.Folder, image.Filename)
+		if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("failed to delete file: %w", err)
+		}
 	}
 
 	if err := s.queries.DeleteImage(ctx, idPg); err != nil {
