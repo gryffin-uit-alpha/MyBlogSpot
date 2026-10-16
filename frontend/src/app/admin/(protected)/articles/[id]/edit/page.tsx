@@ -89,17 +89,25 @@ export default function EditArticlePage() {
 
   const insertMarkdown = (markdown: string) => {
     const textarea = contentRef.current;
-    if (!textarea) return;
+    if (!textarea) {
+      setFormData((prev) => ({
+        ...prev,
+        content: prev.content ? `${prev.content}\n${markdown}` : markdown,
+      }));
+      return;
+    }
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const text = formData.content;
-    const before = text.substring(0, start);
-    const after = text.substring(end);
 
-    setFormData({
-      ...formData,
-      content: before + markdown + after,
+    setFormData((prev) => {
+      const text = prev.content;
+      const before = text.substring(0, start);
+      const after = text.substring(end);
+      return {
+        ...prev,
+        content: before + markdown + after,
+      };
     });
 
     setTimeout(() => {
@@ -252,7 +260,6 @@ export default function EditArticlePage() {
                 folder="articles"
                 onInsertMarkdown={(markdown) => {
                   insertMarkdown(markdown);
-                  setShowImageUploader(false);
                 }}
               />
             </div>

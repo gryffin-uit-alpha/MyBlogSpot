@@ -51,11 +51,13 @@ func NewImageService(queries *db.Queries, uploadPath, baseURL string) *ImageServ
 }
 
 type ImageUploadResult struct {
-	ID       uuid.UUID `json:"id"`
-	URL      string    `json:"url"`
-	Filename string    `json:"filename"`
-	Folder   string    `json:"folder"`
-	AltText  string    `json:"alt_text"`
+	ID               uuid.UUID `json:"id"`
+	URL              string    `json:"url"`
+	Filename         string    `json:"filename"`
+	OriginalFilename string    `json:"original_filename"`
+	Folder           string    `json:"folder"`
+	AltText          string    `json:"alt_text"`
+	CreatedAt        time.Time `json:"created_at"`
 }
 
 func (s *ImageService) UploadImage(ctx context.Context, file multipart.File, header *multipart.FileHeader, folder, altText string) (*ImageUploadResult, error) {
@@ -140,11 +142,13 @@ func (s *ImageService) UploadImage(ctx context.Context, file multipart.File, hea
 	}
 
 	return &ImageUploadResult{
-		ID:       uuid.UUID(image.ID.Bytes),
-		URL:      image.Url,
-		Filename: image.Filename,
-		Folder:   image.Folder,
-		AltText:  altText,
+		ID:               uuid.UUID(image.ID.Bytes),
+		URL:              image.Url,
+		Filename:         image.Filename,
+		OriginalFilename: image.OriginalFilename,
+		Folder:           image.Folder,
+		AltText:          altText,
+		CreatedAt:        image.CreatedAt.Time,
 	}, nil
 }
 
@@ -243,6 +247,9 @@ func (s *ImageService) DeleteImage(ctx context.Context, idStr string) error {
 
 func (s *ImageService) GetMarkdownSyntax(image *ImageUploadResult) string {
 	altText := image.AltText
+	if altText == "" {
+		altText = image.OriginalFilename
+	}
 	if altText == "" {
 		altText = strings.TrimSuffix(image.Filename, filepath.Ext(image.Filename))
 	}

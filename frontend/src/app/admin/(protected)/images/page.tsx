@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import ImageUploader from '@/components/admin/ImageUploader';
+import ImageUploader, { buildImageMarkdown, copyTextToClipboard } from '@/components/admin/ImageUploader';
 import { api } from '@/lib/api/client';
 
 interface Image {
@@ -75,10 +75,9 @@ export default function ImagesPage() {
     }
   };
 
-  const copyMarkdown = (image: Image) => {
-    const altText = image.alt_text || image.original_filename;
-    const markdown = `![${altText}](${image.url})`;
-    navigator.clipboard.writeText(markdown);
+  const copyMarkdown = async (image: Image) => {
+    const markdown = buildImageMarkdown(image);
+    await copyTextToClipboard(markdown);
 
     setToast({ show: true, message: 'Markdown copied to clipboard', type: 'success' });
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 2000);
@@ -109,24 +108,14 @@ export default function ImagesPage() {
               <h2 className="text-xl font-semibold text-white font-mono">
                 <span className="text-cyan-400">&gt;</span> Upload New Images
               </h2>
-              <div className="flex items-center gap-3">
-                <label className="text-sm font-mono text-gray-400">Folder:</label>
-                <select
-                  value={selectedFolder}
-                  onChange={(e) => setSelectedFolder(e.target.value)}
-                  className="px-3 py-2 bg-[#0B0F19] border border-gray-700 rounded-lg text-white font-mono text-sm focus:ring-2 focus:ring-cyan-500"
-                >
-                  {folders.map(folder => (
-                    <option key={folder} value={folder}>{folder}</option>
-                  ))}
-                </select>
-              </div>
             </div>
             <ImageUploader
-              folder={selectedFolder || 'general'}
+              folder={selectedFolder || 'articles'}
+              showLibraryTabs={false}
               onUploadComplete={() => {
                 fetchImages();
-                setShowUploader(false);
+                setToast({ show: true, message: 'Images uploaded successfully', type: 'success' });
+                setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 2500);
               }}
             />
           </div>

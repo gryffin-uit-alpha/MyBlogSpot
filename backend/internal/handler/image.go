@@ -47,12 +47,14 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	markdown := h.service.GetMarkdownSyntax(result)
 
 	response := map[string]interface{}{
-		"id":       result.ID,
-		"url":      result.URL,
-		"filename": result.Filename,
-		"folder":   result.Folder,
-		"alt_text": result.AltText,
-		"markdown": markdown,
+		"id":                result.ID,
+		"url":               result.URL,
+		"filename":          result.Filename,
+		"original_filename": result.OriginalFilename,
+		"folder":            result.Folder,
+		"alt_text":          result.AltText,
+		"created_at":        result.CreatedAt,
+		"markdown":          markdown,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
