@@ -37,7 +37,7 @@ export default function ArticleLivePreview({
 
   return (
     <div
-      className={`bg-[#0B0F19] border border-gray-800 rounded-xl overflow-hidden flex flex-col shadow-2xl ${
+      className={`w-full bg-[#0B0F19] border border-gray-800 rounded-xl overflow-hidden flex flex-col shadow-2xl ${
         sticky ? 'xl:sticky xl:top-24 xl:max-h-[calc(100vh-7.5rem)]' : ''
       }`}
     >

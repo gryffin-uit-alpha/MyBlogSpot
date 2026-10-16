@@ -155,7 +155,7 @@ export default function HomepageEditorPage() {
         className={
           viewMode === 'split'
             ? 'grid grid-cols-1 xl:grid-cols-2 gap-6 items-start'
-            : 'max-w-4xl'
+            : 'w-full'
         }
       >
         {/* Left Pane: Editor Form */}

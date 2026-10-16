@@ -184,7 +184,7 @@ export default function EditArticlePage() {
         className={
           viewMode === 'split'
             ? 'grid grid-cols-1 xl:grid-cols-2 gap-6 items-start'
-            : 'max-w-5xl'
+            : 'w-full'
         }
       >
         {/* Left Pane: Article Editor Form */}
